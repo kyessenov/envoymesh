@@ -73,10 +73,10 @@ func main() {
 			glog.Fatal(err)
 		}
 	}
-	generator.Run(stop)
-
 	// expose profiling endpoint
-	http.ListenAndServe(":15005", nil)
+	go http.ListenAndServe(":15005", nil)
+
+	go generator.Run(stop)
 
 	cmd.WaitSignal(stop)
 }
