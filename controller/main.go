@@ -37,7 +37,7 @@ func main() {
 		}
 	}
 
-	config := cache.NewSimpleCache(v2.Hasher{}, nil /* TODO */)
+	config := cache.NewSimpleCache(envoy.Hasher{}, nil /* TODO */)
 	server := xds.NewServer(config)
 	grpcServer := grpc.NewServer()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
@@ -53,23 +53,23 @@ func main() {
 	}()
 
 	// run envoy process
-	envoy := exec.Command(binPath,
+	envoyCmd := exec.Command(binPath,
 		"-c", "bootstrap.json",
 		"-l", debug,
 		"--drain-time-s", "1")
-	envoy.Stdout = os.Stdout
-	envoy.Stderr = os.Stderr
-	envoy.Start()
+	envoyCmd.Stdout = os.Stdout
+	envoyCmd.Stderr = os.Stderr
+	envoyCmd.Start()
 
-	var generator *v2.Generator
+	var generator *envoy.Generator
 	if validate {
-		generator = v2.NewGenerator(config, map[string]string{
+		generator = envoy.NewGenerator(config, map[string]string{
 			"services.json":  readFile("testdata/services.json"),
 			"instances.json": readFile("testdata/instances.json"),
 			"context.json":   readFile("testdata/context.json"),
 		})
 	} else {
-		generator, err = v2.NewKubeGenerator(config, id, domain, kubeconfig)
+		generator, err = envoy.NewKubeGenerator(config, id, domain, kubeconfig)
 		if err != nil {
 			glog.Fatal(err)
 		}
