@@ -43,7 +43,6 @@ import (
 
 	proxyconfig "istio.io/api/proxy/v1/config"
 	"istio.io/istio/pilot/proxy"
-	"istio.io/istio/pilot/tools/version"
 )
 
 // per-sidecar policy and status (deployment, job, statefulset, pod, etc)
@@ -208,12 +207,6 @@ func GetInitializerConfig(kube kubernetes.Interface, namespace, injectConfigName
 	case InjectionPolicyDisabled, InjectionPolicyEnabled:
 	default:
 		c.Policy = DefaultInjectionPolicy
-	}
-	if c.Params.InitImage == "" {
-		c.Params.InitImage = InitImageName(DefaultHub, version.Info.Version, c.Params.DebugMode)
-	}
-	if c.Params.ProxyImage == "" {
-		c.Params.ProxyImage = ProxyImageName(DefaultHub, version.Info.Version, c.Params.DebugMode)
 	}
 	if c.Params.SidecarProxyUID == 0 {
 		c.Params.SidecarProxyUID = DefaultSidecarProxyUID
