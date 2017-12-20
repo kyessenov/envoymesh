@@ -9,12 +9,13 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 	xds "github.com/envoyproxy/go-control-plane/pkg/grpc"
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
-	"istio.io/istio/pilot/cmd"
 	"istio.io/istio/pilot/proxy/envoy/v2"
 )
 
@@ -78,7 +79,11 @@ func main() {
 
 	go generator.Run(stop)
 
-	cmd.WaitSignal(stop)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	<-sigs
+	close(stop)
+	glog.Flush()
 }
 
 func readFile(filename string) string {
