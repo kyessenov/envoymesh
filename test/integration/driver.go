@@ -34,9 +34,8 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/kyessenov/envoymesh/platform"
-	"github.com/kyessenov/envoymesh/platform/kube"
-	"github.com/kyessenov/envoymesh/platform/kube/inject"
+	"github.com/kyessenov/envoymesh/kube"
+	"github.com/kyessenov/envoymesh/kube/inject"
 	"github.com/kyessenov/envoymesh/test/util"
 	proxyconfig "istio.io/api/proxy/v1/config"
 )
@@ -78,36 +77,17 @@ func init() {
 		"Namespace in which to install Istio components (empty to create/delete temporary one)")
 	flag.StringVar(&params.Namespace, "n", "",
 		"Namespace in which to install the applications (empty to create/delete temporary one)")
-	flag.StringVar(&params.Registry, "registry", string(platform.KubernetesRegistry), "Pilot registry")
 	flag.BoolVar(&verbose, "verbose", false, "Debug level noise from proxies")
 	flag.BoolVar(&params.checkLogs, "logs", true, "Validate pod logs (expensive in long-running tests)")
 
-	flag.StringVar(&kubeconfig, "kubeconfig", "pilot/platform/kube/config",
+	flag.StringVar(&kubeconfig, "kubeconfig", "pilot/kube/config",
 		"kube config file (missing or empty file makes the test use in-cluster kube config instead)")
 	flag.IntVar(&count, "count", 1, "Number of times to run the tests after deploying")
 	flag.StringVar(&authmode, "auth", "both", "Enable / disable auth, or test both.")
-	flag.BoolVar(&params.Mixer, "mixer", true, "Enable / disable mixer.")
 	flag.StringVar(&params.errorLogsDir, "errorlogsdir", "", "Store per pod logs as individual files in specific directory instead of writing to stderr.")
 
 	// If specified, only run one test
 	flag.StringVar(&testType, "testtype", "", "Select test to run (default is all tests)")
-
-	// Keep disabled until default no-op initializer is distributed
-	// and running in test clusters.
-	flag.BoolVar(&params.UseInitializer, "use-initializer", false, "Use k8s sidecar initializer")
-	flag.BoolVar(&params.UseAdmissionWebhook, "use-admission-webhook", false,
-		"Use k8s external admission webhook for config validation")
-
-	// TODO(github.com/kubernetes/kubernetes/issues/49987) - use
-	// `istio-pilot-external` for the registered service name and
-	// provide `istio-pilot` as --service-name argument to
-	// platform/kube/admit/webhook-workaround.sh. Once this bug is
-	// fixed (and for non-GKE k8s) the admission-service-name should
-	// be `istio-pilot`.
-	flag.StringVar(&params.AdmissionServiceName, "admission-service-name", "istio-pilot-external",
-		"Name of admission webhook service name")
-
-	flag.IntVar(&params.DebugPort, "debugport", 0, "Debugging port")
 
 	flag.BoolVar(&params.debugImagesAndMode, "debug", true, "Use debug images and mode (false for prod)")
 
@@ -136,8 +116,6 @@ func main() {
 	params.Auth = proxyconfig.MeshConfig_NONE
 	params.Ingress = true
 	params.Zipkin = true
-	params.MixerCustomConfigFile = mixerConfigFile
-	params.PilotCustomConfigFile = pilotConfigFile
 
 	if len(params.Namespace) != 0 && authmode == "both" {
 		glog.Infof("When namespace(=%s) is specified, auth mode(=%s) must be one of enable or disable.",
@@ -167,9 +145,6 @@ func setAuth(params infra) infra {
 	out := params
 	out.Name = "(auth infra)"
 	out.Auth = proxyconfig.MeshConfig_MUTUAL_TLS
-	out.ControlPlaneAuthPolicy = proxyconfig.AuthenticationPolicy_MUTUAL_TLS
-	out.MixerCustomConfigFile = mixerConfigAuthFile
-	out.PilotCustomConfigFile = pilotConfigAuthFile
 	return out
 }
 

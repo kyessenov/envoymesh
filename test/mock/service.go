@@ -19,7 +19,6 @@ import (
 	"net"
 
 	"github.com/kyessenov/envoymesh/model"
-	"github.com/kyessenov/envoymesh/proxy"
 	proxyconfig "istio.io/api/proxy/v1/config"
 )
 
@@ -50,30 +49,6 @@ var (
 	}
 	HelloInstanceV0 = MakeIP(HelloService, 0)
 	HelloInstanceV1 = MakeIP(HelloService, 1)
-	HelloProxyV0    = proxy.Node{
-		Type:      proxy.Sidecar,
-		IPAddress: HelloInstanceV0,
-		ID:        "v0.default",
-		Domain:    "default.svc.cluster.local",
-	}
-	HelloProxyV1 = proxy.Node{
-		Type:      proxy.Sidecar,
-		IPAddress: HelloInstanceV1,
-		ID:        "v1.default",
-		Domain:    "default.svc.cluster.local",
-	}
-	Ingress = proxy.Node{
-		Type:      proxy.Ingress,
-		IPAddress: "10.3.3.3",
-		ID:        "ingress.default",
-		Domain:    "default.svc.cluster.local",
-	}
-	Router = proxy.Node{
-		Type:      proxy.Router,
-		IPAddress: "10.3.3.5",
-		ID:        "router.default",
-		Domain:    "default.svc.cluster.local",
-	}
 )
 
 // NewDiscovery builds a mock ServiceDiscovery

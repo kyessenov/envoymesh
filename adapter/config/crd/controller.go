@@ -27,8 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/model"
-	"github.com/kyessenov/envoymesh/platform/kube"
 )
 
 // controller is a collection of synchronized resource watchers.

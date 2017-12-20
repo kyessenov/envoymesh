@@ -16,8 +16,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	jsonnet "github.com/google/go-jsonnet"
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/model"
-	"github.com/kyessenov/envoymesh/platform/kube"
 )
 
 type Hasher struct{}

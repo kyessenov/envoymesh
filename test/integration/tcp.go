@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/kyessenov/envoymesh/platform"
 	proxyconfig "istio.io/api/proxy/v1/config"
 )
 
@@ -37,10 +36,6 @@ func (t *tcp) teardown() {
 }
 
 func (t *tcp) run() error {
-	// TCP in Eureka is tested by the headless service test.
-	if platform.ServiceRegistry(t.Registry) == platform.EurekaRegistry {
-		return nil
-	}
 	// Auth is enabled for d:9090 using per-service policy. We expect request
 	// from non-envoy client ("t") should fail all the time.
 	srcPods := []string{"a", "b", "t"}

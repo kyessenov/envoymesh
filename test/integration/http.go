@@ -101,10 +101,6 @@ func (r *http) makeRequests() error {
 										r.logs.add(dst, id, name)
 									}
 								}
-								// mixer filter is invoked on the server side, that is when dst is not "t"
-								if r.Mixer && dst != "t" {
-									r.logs.add("mixer", id, name)
-								}
 								return nil
 							}
 							if src == "t" && dst == "t" {

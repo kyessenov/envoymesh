@@ -21,7 +21,7 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/kyessenov/envoymesh/platform/kube/inject"
+	"github.com/kyessenov/envoymesh/kube/inject"
 	"github.com/kyessenov/envoymesh/test/util"
 )
 

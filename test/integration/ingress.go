@@ -20,8 +20,6 @@ import (
 
 	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/kyessenov/envoymesh/platform"
 )
 
 type ingress struct {
@@ -41,9 +39,6 @@ func (t *ingress) setup() error {
 	if !t.Ingress {
 		return nil
 	}
-	if platform.ServiceRegistry(t.Registry) != platform.KubernetesRegistry {
-		return nil
-	}
 	t.logs = makeAccessLogs()
 
 	// parse and send yamls
@@ -60,9 +55,6 @@ func (t *ingress) setup() error {
 func (t *ingress) run() error {
 	if !t.Ingress {
 		glog.Info("skipping test since ingress is missing")
-		return nil
-	}
-	if platform.ServiceRegistry(t.Registry) != platform.KubernetesRegistry {
 		return nil
 	}
 

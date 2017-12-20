@@ -15,7 +15,7 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 	xds "github.com/envoyproxy/go-control-plane/pkg/grpc"
 	"github.com/golang/glog"
-	"github.com/kyessenov/envoymesh/proxy/envoy/v2"
+	"github.com/kyessenov/envoymesh/envoy"
 	"google.golang.org/grpc"
 )
 

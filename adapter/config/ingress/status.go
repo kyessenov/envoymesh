@@ -31,7 +31,7 @@ import (
 	"k8s.io/ingress/core/pkg/ingress/status"
 	"k8s.io/ingress/core/pkg/ingress/store"
 
-	"github.com/kyessenov/envoymesh/platform/kube"
+	"github.com/kyessenov/envoymesh/kube"
 	proxyconfig "istio.io/api/proxy/v1/config"
 )
 

@@ -17,21 +17,17 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kyessenov/envoymesh/adapter/config/crd"
 	"github.com/kyessenov/envoymesh/model"
-	"github.com/kyessenov/envoymesh/platform/kube/inject"
 	"github.com/kyessenov/envoymesh/test/util"
 	proxyconfig "istio.io/api/proxy/v1/config"
 )
@@ -49,19 +45,14 @@ type infra struct { // nolint: aligncheck
 
 	Namespace      string
 	IstioNamespace string
-	Registry       string
 	Verbosity      int
 
 	// map from app to pods
 	apps map[string][]string
 
-	Auth                   proxyconfig.MeshConfig_AuthPolicy
-	ControlPlaneAuthPolicy proxyconfig.AuthenticationPolicy
-	MixerCustomConfigFile  string
-	PilotCustomConfigFile  string
+	Auth proxyconfig.MeshConfig_AuthPolicy
 
 	// switches for infrastructure components
-	Mixer     bool
 	Ingress   bool
 	Zipkin    bool
 	DebugPort int
@@ -75,14 +66,6 @@ type infra struct { // nolint: aligncheck
 	namespaceCreated      bool
 	istioNamespaceCreated bool
 	debugImagesAndMode    bool
-
-	// sidecar initializer
-	UseInitializer bool
-	InjectConfig   *inject.Config
-
-	// External Admission Webhook for validation
-	UseAdmissionWebhook  bool
-	AdmissionServiceName string
 
 	config model.IstioConfigStore
 }
@@ -136,93 +119,9 @@ func (infra *infra) setup() error {
 	if err := deploy("rbac-app.yaml.tmpl", infra.Namespace); err != nil {
 		return err
 	}
-
 	if err := deploy("config.yaml.tmpl", infra.IstioNamespace); err != nil {
 		return err
 	}
-
-	_, mesh, err := inject.GetMeshConfig(client, infra.IstioNamespace, "istio")
-	if err != nil {
-		return err
-	}
-	debugMode := infra.debugImagesAndMode
-	glog.Infof("mesh %s", spew.Sdump(mesh))
-
-	// Default to NamespaceAll to mirror kube-inject behavior. Only
-	// use a specific include namespace for the automatic injection.
-	includeNamespaces := []string{v1.NamespaceAll}
-	if infra.UseInitializer {
-		includeNamespaces = []string{infra.Namespace}
-	}
-
-	infra.InjectConfig = &inject.Config{
-		Policy:            inject.InjectionPolicyEnabled,
-		IncludeNamespaces: includeNamespaces,
-		Params: inject.Params{
-			InitImage:       inject.InitImageName(infra.Hub, infra.Tag, debugMode),
-			ProxyImage:      inject.ProxyImageName(infra.Hub, infra.Tag, debugMode),
-			Verbosity:       infra.Verbosity,
-			SidecarProxyUID: inject.DefaultSidecarProxyUID,
-			EnableCoreDump:  true,
-			Version:         "integration-test",
-			Mesh:            mesh,
-			DebugMode:       debugMode,
-			Experimental:    true,
-		},
-	}
-
-	// NOTE: InitializerConfiguration is cluster-scoped and may be
-	// created and used by other tests in the same test cluster.
-	//	if infra.UseInitializer {
-	//		if err := deploy("initializer-config.yaml.tmpl", infra.IstioNamespace); err != nil {
-	//			return err
-	//		}
-	//	}
-
-	// TODO - Initializer configs can block initializers from being
-	// deployed. The workaround is to explicitly set the initializer
-	// field of the deployment to an empty list, thus bypassing the
-	// initializers. This works when the deployment is first created,
-	// but Subsequent modifications with 'apply' fail with the
-	// message:
-	//
-	// 		The Deployment "istio-sidecar-initializer" is invalid:
-	// 		metadata.initializers: Invalid value: "null": field is
-	// 		immutable once initialization has completed.
-	//
-	// Delete any existing initializer deployment from previous test
-	// runs first before trying to (re)create it.
-	//
-	// See github.com/kubernetes/kubernetes/issues/49048 for k8s
-	// tracking issue.
-	//	if yaml, err := fill("initializer.yaml.tmpl", infra); err != nil {
-	//		return err
-	//	} else if err = infra.kubeDelete(yaml, infra.IstioNamespace); err != nil {
-	//		glog.Infof("Sidecar initializer could not be deleted: %v", err)
-	//	}
-	//
-	//	if yaml, err := fill("initializer-configmap.yaml.tmpl", &infra.InjectConfig); err != nil {
-	//		return err
-	//	} else if err = infra.kubeApply(yaml, infra.IstioNamespace); err != nil {
-	//		return err
-	//	}
-	//	if err := deploy("initializer.yaml.tmpl", infra.IstioNamespace); err != nil {
-	//		return err
-	//	}
-	//
-	//	if err := deploy("pilot.yaml.tmpl", infra.IstioNamespace); err != nil {
-	//		return err
-	//	}
-	//	if infra.Mixer {
-	//		if err := deploy("mixer.yaml.tmpl", infra.IstioNamespace); err != nil {
-	//			return err
-	//		}
-	//	}
-	//	if platform.ServiceRegistry(infra.Registry) == platform.EurekaRegistry {
-	//		if err := deploy("eureka.yaml.tmpl", infra.IstioNamespace); err != nil {
-	//			return err
-	//		}
-	//	}
 
 	if err := deploy("ca.yaml.tmpl", infra.IstioNamespace); err != nil {
 		return err
@@ -310,15 +209,18 @@ func (infra *infra) deployApp(deployment, svcName string, port1, port2, port3, p
 
 	writer := new(bytes.Buffer)
 
-	if injectProxy && !infra.UseInitializer {
-		if err := inject.IntoResourceFile(infra.InjectConfig, strings.NewReader(w), writer); err != nil {
-			return err
+	_ = w
+	/*
+		if injectProxy && !infra.UseInitializer {
+			if err := inject.IntoResourceFile(infra.InjectConfig, strings.NewReader(w), writer); err != nil {
+				return err
+			}
+		} else {
+			if _, err := io.Copy(writer, strings.NewReader(w)); err != nil {
+				return err
+			}
 		}
-	} else {
-		if _, err := io.Copy(writer, strings.NewReader(w)); err != nil {
-			return err
-		}
-	}
+	*/
 
 	return infra.kubeApply(writer.String(), infra.Namespace)
 }

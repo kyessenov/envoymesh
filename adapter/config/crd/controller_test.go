@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kyessenov/envoymesh/platform/kube"
+	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/test/mock"
 )
 

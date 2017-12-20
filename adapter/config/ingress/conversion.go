@@ -25,8 +25,8 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/model"
-	"github.com/kyessenov/envoymesh/platform/kube"
 	proxyconfig "istio.io/api/proxy/v1/config"
 )
 

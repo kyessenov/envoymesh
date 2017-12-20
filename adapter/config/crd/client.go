@@ -37,8 +37,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/model"
-	"github.com/kyessenov/envoymesh/platform/kube"
 )
 
 // IstioAPIGroupVersion defines schema.GroupVersion for Istio configuration

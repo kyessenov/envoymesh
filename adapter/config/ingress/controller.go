@@ -29,8 +29,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/model"
-	"github.com/kyessenov/envoymesh/platform/kube"
 	proxyconfig "istio.io/api/proxy/v1/config"
 )
 

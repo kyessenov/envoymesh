@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/ingress/core/pkg/ingress/annotations/class"
 
-	"github.com/kyessenov/envoymesh/platform/kube"
+	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/proxy"
 	proxyconfig "istio.io/api/proxy/v1/config"
 )

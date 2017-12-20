@@ -19,8 +19,8 @@ import (
 	"os/user"
 	"testing"
 
+	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/model"
-	"github.com/kyessenov/envoymesh/platform/kube"
 	"github.com/kyessenov/envoymesh/test/mock"
 	"github.com/kyessenov/envoymesh/test/util"
 )
@@ -36,7 +36,7 @@ func kubeconfig(t *testing.T) string {
 	// For Bazel sandbox we search a different location:
 	if _, err = os.Stat(kubeconfig); err != nil {
 		kubeconfig, _ = os.Getwd()
-		kubeconfig = kubeconfig + "/../../../platform/kube/config"
+		kubeconfig = kubeconfig + "/../../../kube/config"
 	}
 
 	return kubeconfig

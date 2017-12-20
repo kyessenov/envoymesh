@@ -24,8 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
 
+	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/model"
-	"github.com/kyessenov/envoymesh/platform/kube"
 	"github.com/kyessenov/envoymesh/proxy"
 	"github.com/kyessenov/envoymesh/test/mock"
 	"github.com/kyessenov/envoymesh/test/util"

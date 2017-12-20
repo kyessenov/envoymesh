@@ -80,10 +80,6 @@ func (t *grpc) makeRequests() error {
 										t.logs.add(dst, id, name)
 									}
 								}
-								// mixer filter is invoked on the server side, that is when dst is not "t"
-								if t.Mixer && dst != "t" {
-									t.logs.add("mixer", id, name)
-								}
 								return nil
 							}
 							if src == "t" && dst == "t" {
