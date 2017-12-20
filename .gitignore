@@ -6,15 +6,6 @@
 .idea/
 # Visual Studio Code
 .vscode/
-# Bazel
-/bazel-*
-vendor
-*.descriptor_set
-# vi backups
-*.bak
-# Vm setup generated files
-cluster.env
-kubedns
-# pilot
-pilot/platform/config
+/vendor
+/controller-linux
 /integration
