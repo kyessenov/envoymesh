@@ -35,7 +35,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kyessenov/envoymesh/kube"
-	"github.com/kyessenov/envoymesh/kube/inject"
 	"github.com/kyessenov/envoymesh/test/util"
 	proxyconfig "istio.io/api/proxy/v1/config"
 )
@@ -226,11 +225,11 @@ func runTests(envs ...infra) {
 				} else if strings.HasPrefix(pod, "istio-ingress") {
 					log("Ingress log", pod)
 					filename = "istio-ingress"
-					content = util.FetchLogs(client, pod, istio.IstioNamespace, inject.ProxyContainerName)
+					content = util.FetchLogs(client, pod, istio.IstioNamespace, "istio-proxy")
 				} else {
 					log("Proxy log", pod)
 					filename = pod
-					content = util.FetchLogs(client, pod, istio.Namespace, inject.ProxyContainerName)
+					content = util.FetchLogs(client, pod, istio.Namespace, "istio-proxy")
 				}
 
 				if len(istio.errorLogsDir) > 0 {

@@ -21,7 +21,6 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/kyessenov/envoymesh/kube/inject"
 	"github.com/kyessenov/envoymesh/test/util"
 )
 
@@ -74,7 +73,7 @@ func (a *accessLogs) check(infra *infra) error {
 				}
 
 				pod := infra.apps[app][0]
-				container := inject.ProxyContainerName
+				container := "istio-proxy"
 				ns := infra.Namespace
 				switch app {
 				case "mixer":
