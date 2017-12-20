@@ -34,6 +34,8 @@ Use `build.sh` script to generate a sidecar container that includes
 
 ## Test instructions
 
+Requirements for integration testing:
+- helm
 
 TODO
 
