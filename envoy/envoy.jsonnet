@@ -2,7 +2,6 @@ local services = import "services.json";
 local instances = import "instances.json";
 local context = import "context.json";
 
-// TODO: these functions are super slow! 1.2s vs 0.003s slow!
 local util = {
     longest_suffix(a, b, j)::
         if j >= std.length(a) || j >= std.length(b) then
