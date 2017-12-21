@@ -16,7 +16,8 @@ provides the following features:
 ## Goals
 - Minimal implementation of a control plane for a fleet of Envoy proxies
 - ADS for coordinated configuration rollout
-- Implementation of native Envoy extension point (access log, metrics, authz)
+- Implementation of native Envoy extension points (access log, metrics,
+  external authorization)
 
 ## Limitations
 

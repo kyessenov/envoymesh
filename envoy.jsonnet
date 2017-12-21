@@ -60,7 +60,7 @@ local config = {
     outbound_cluster(hostname, labels, port_desc)::
         local key = model.key(hostname, labels, port_desc);
         {
-            name: "out.%s" % [std.md5(key)],
+            name: key,
             connect_timeout: "5s",
             type: "EDS",
             eds_cluster_config: {
