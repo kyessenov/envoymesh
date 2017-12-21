@@ -12,8 +12,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/envoyproxy/go-control-plane/api"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
-	xds "github.com/envoyproxy/go-control-plane/pkg/grpc"
+	xds "github.com/envoyproxy/go-control-plane/pkg/server"
 	"github.com/golang/glog"
 	"github.com/kyessenov/envoymesh/envoy"
 	"google.golang.org/grpc"
@@ -44,7 +45,7 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed to listen: %v", err)
 	}
-	server.Register(grpcServer)
+	api.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
 
 	go func() {
 		if err = grpcServer.Serve(lis); err != nil {

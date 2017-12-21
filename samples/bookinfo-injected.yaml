@@ -48,7 +48,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoymesh:latest
-        name: istio-proxy
+        name: sidecar
         securityContext:
           runAsUser: 1337
       initContainers:
@@ -58,7 +58,7 @@ spec:
         - -u
         - "1337"
         image: docker.io/istio/proxy_init:0.4.0
-        name: istio-init
+        name: iptables
         securityContext:
           capabilities:
             add:
@@ -110,7 +110,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoymesh:latest
-        name: istio-proxy
+        name: sidecar
         securityContext:
           runAsUser: 1337
       initContainers:
@@ -120,7 +120,7 @@ spec:
         - -u
         - "1337"
         image: docker.io/istio/proxy_init:0.4.0
-        name: istio-init
+        name: iptables
         securityContext:
           capabilities:
             add:
@@ -172,7 +172,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoymesh:latest
-        name: istio-proxy
+        name: sidecar
         securityContext:
           runAsUser: 1337
       initContainers:
@@ -182,7 +182,7 @@ spec:
         - -u
         - "1337"
         image: docker.io/istio/proxy_init:0.4.0
-        name: istio-init
+        name: iptables
         securityContext:
           capabilities:
             add:
@@ -221,7 +221,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoymesh:latest
-        name: istio-proxy
+        name: sidecar
         securityContext:
           runAsUser: 1337
       initContainers:
@@ -231,7 +231,7 @@ spec:
         - -u
         - "1337"
         image: docker.io/istio/proxy_init:0.4.0
-        name: istio-init
+        name: iptables
         securityContext:
           capabilities:
             add:
@@ -270,7 +270,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoymesh:latest
-        name: istio-proxy
+        name: sidecar
         securityContext:
           runAsUser: 1337
       initContainers:
@@ -280,7 +280,7 @@ spec:
         - -u
         - "1337"
         image: docker.io/istio/proxy_init:0.4.0
-        name: istio-init
+        name: iptables
         securityContext:
           capabilities:
             add:
@@ -334,7 +334,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoymesh:latest
-        name: istio-proxy
+        name: sidecar
         securityContext:
           runAsUser: 1337
       initContainers:
@@ -344,7 +344,7 @@ spec:
         - -u
         - "1337"
         image: docker.io/istio/proxy_init:0.4.0
-        name: istio-init
+        name: iptables
         securityContext:
           capabilities:
             add:

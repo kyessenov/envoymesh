@@ -1,7 +1,7 @@
 # Injection script for inserting sidecar and iptables containers.
 # Modelled after istio kube-inject.
 # The input is a kubernetes resource JSON.
-function(o, image="gcr.io/istio-testing/envoymesh:latest", uid=1337)
+function(o, image="gcr.io/istio-testing/envoymesh:latest", uid=1337, port=15001)
     if o.kind == 'Deployment' then o {
         spec: super.spec + {
             template: super.template + {
@@ -27,16 +27,16 @@ function(o, image="gcr.io/istio-testing/envoymesh:latest", uid=1337)
                             },
                         ],
                         image: image,
-                        name: "istio-proxy",
+                        name: "sidecar",
                         securityContext: {
                             runAsUser: uid,
                         },
 
                     }],
                     initContainers+: [{
-                        args: ["-p", "15001", "-u", std.toString(uid)],
+                        args: ["-p", std.toString(port), "-u", std.toString(uid)],
                         image: "docker.io/istio/proxy_init:0.4.0",
-                        name: "istio-init",
+                        name: "iptables",
                         securityContext: {
                             capabilities: {
                                 add: ["NET_ADMIN"],

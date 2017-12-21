@@ -11,9 +11,9 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/api"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	jsonnet "github.com/google/go-jsonnet"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/kyessenov/envoymesh/kube"
