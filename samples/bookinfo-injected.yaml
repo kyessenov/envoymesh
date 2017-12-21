@@ -1,0 +1,342 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: details
+  name: details
+spec:
+  ports:
+  - name: http
+    port: 9080
+  selector:
+    app: details
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: details-v1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: details
+        version: v1
+    spec:
+      containers:
+      - image: istio/examples-bookinfo-details-v1:0.2.8
+        imagePullPolicy: IfNotPresent
+        name: details
+        ports:
+        - containerPort: 9080
+      - args:
+        - -v
+        - "2"
+        - --logtostderr
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/istio-testing/envoymesh:latest
+        name: istio-proxy
+        securityContext:
+          runAsUser: 1337
+      initContainers:
+      - args:
+        - -p
+        - "15001"
+        - -u
+        - "1337"
+        image: docker.io/istio/proxy_init:0.4.0
+        name: istio-init
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ratings
+  name: ratings
+spec:
+  ports:
+  - name: http
+    port: 9080
+  selector:
+    app: ratings
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ratings-v1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ratings
+        version: v1
+    spec:
+      containers:
+      - image: istio/examples-bookinfo-ratings-v1:0.2.8
+        imagePullPolicy: IfNotPresent
+        name: ratings
+        ports:
+        - containerPort: 9080
+      - args:
+        - -v
+        - "2"
+        - --logtostderr
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/istio-testing/envoymesh:latest
+        name: istio-proxy
+        securityContext:
+          runAsUser: 1337
+      initContainers:
+      - args:
+        - -p
+        - "15001"
+        - -u
+        - "1337"
+        image: docker.io/istio/proxy_init:0.4.0
+        name: istio-init
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: reviews
+  name: reviews
+spec:
+  ports:
+  - name: http
+    port: 9080
+  selector:
+    app: reviews
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: reviews-v1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v1
+    spec:
+      containers:
+      - image: istio/examples-bookinfo-reviews-v1:0.2.8
+        imagePullPolicy: IfNotPresent
+        name: reviews
+        ports:
+        - containerPort: 9080
+      - args:
+        - -v
+        - "2"
+        - --logtostderr
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/istio-testing/envoymesh:latest
+        name: istio-proxy
+        securityContext:
+          runAsUser: 1337
+      initContainers:
+      - args:
+        - -p
+        - "15001"
+        - -u
+        - "1337"
+        image: docker.io/istio/proxy_init:0.4.0
+        name: istio-init
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: reviews-v2
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v2
+    spec:
+      containers:
+      - image: istio/examples-bookinfo-reviews-v2:0.2.8
+        imagePullPolicy: IfNotPresent
+        name: reviews
+        ports:
+        - containerPort: 9080
+      - args:
+        - -v
+        - "2"
+        - --logtostderr
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/istio-testing/envoymesh:latest
+        name: istio-proxy
+        securityContext:
+          runAsUser: 1337
+      initContainers:
+      - args:
+        - -p
+        - "15001"
+        - -u
+        - "1337"
+        image: docker.io/istio/proxy_init:0.4.0
+        name: istio-init
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: reviews-v3
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v3
+    spec:
+      containers:
+      - image: istio/examples-bookinfo-reviews-v3:0.2.8
+        imagePullPolicy: IfNotPresent
+        name: reviews
+        ports:
+        - containerPort: 9080
+      - args:
+        - -v
+        - "2"
+        - --logtostderr
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/istio-testing/envoymesh:latest
+        name: istio-proxy
+        securityContext:
+          runAsUser: 1337
+      initContainers:
+      - args:
+        - -p
+        - "15001"
+        - -u
+        - "1337"
+        image: docker.io/istio/proxy_init:0.4.0
+        name: istio-init
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: productpage
+  name: productpage
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 9080
+  selector:
+    app: productpage
+  type: LoadBalancer
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: productpage-v1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: productpage
+        version: v1
+    spec:
+      containers:
+      - image: istio/examples-bookinfo-productpage-v1:0.2.8
+        imagePullPolicy: IfNotPresent
+        name: productpage
+        ports:
+        - containerPort: 9080
+      - args:
+        - -v
+        - "2"
+        - --logtostderr
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/istio-testing/envoymesh:latest
+        name: istio-proxy
+        securityContext:
+          runAsUser: 1337
+      initContainers:
+      - args:
+        - -p
+        - "15001"
+        - -u
+        - "1337"
+        image: docker.io/istio/proxy_init:0.4.0
+        name: istio-init
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+---

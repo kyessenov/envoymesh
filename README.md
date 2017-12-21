@@ -22,6 +22,7 @@ provides the following features:
   processing logic.
 - To simplify the deployment model, sidecar container includes both the proxy
   and its controller.
+- No support for health checks in the application deployment.
 
 ## Build instructions
 
@@ -34,8 +35,15 @@ Use `build.sh` script to generate a sidecar container that includes
 
 ## Test instructions
 
-Requirements for integration testing:
-- helm
+Use the famous bookinfo app for demonstration:
 
-TODO
+    kubectl apply -f samples/bookinfo.yaml
 
+Access the web page by using `EXTERNAL_IP` of `productpage` service:
+`http://EXTERNAL_IP/productpage`
+
+Inject the sidecar using the following script:
+
+    cat samples/bookinfo.yaml \
+      | go run cmd/inject/main.go \
+      > samples/bookinfo-injected.yaml 
