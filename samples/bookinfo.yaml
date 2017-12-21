@@ -1,3 +1,8 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: envoymesh
+---
 ##################################################################################################
 # Details service
 ##################################################################################################
@@ -26,6 +31,7 @@ spec:
         app: details
         version: v1
     spec:
+      serviceAccountName: envoymesh
       containers:
       - name: details
         image: istio/examples-bookinfo-details-v1:0.2.8
@@ -61,6 +67,7 @@ spec:
         app: ratings
         version: v1
     spec:
+      serviceAccountName: envoymesh
       containers:
       - name: ratings
         image: istio/examples-bookinfo-ratings-v1:0.2.8
@@ -96,6 +103,7 @@ spec:
         app: reviews
         version: v1
     spec:
+      serviceAccountName: envoymesh
       containers:
       - name: reviews
         image: istio/examples-bookinfo-reviews-v1:0.2.8
@@ -115,6 +123,7 @@ spec:
         app: reviews
         version: v2
     spec:
+      serviceAccountName: envoymesh
       containers:
       - name: reviews
         image: istio/examples-bookinfo-reviews-v2:0.2.8
@@ -134,6 +143,7 @@ spec:
         app: reviews
         version: v3
     spec:
+      serviceAccountName: envoymesh
       containers:
       - name: reviews
         image: istio/examples-bookinfo-reviews-v3:0.2.8
@@ -171,6 +181,7 @@ spec:
         app: productpage
         version: v1
     spec:
+      serviceAccountName: envoymesh
       containers:
       - name: productpage
         image: istio/examples-bookinfo-productpage-v1:0.2.8

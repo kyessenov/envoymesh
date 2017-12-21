@@ -1,4 +1,9 @@
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: envoymesh
+---
+apiVersion: v1
 kind: Service
 metadata:
   labels:
@@ -58,6 +63,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      serviceAccountName: envoymesh
 ---
 apiVersion: v1
 kind: Service
@@ -119,6 +125,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      serviceAccountName: envoymesh
 ---
 apiVersion: v1
 kind: Service
@@ -180,6 +187,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      serviceAccountName: envoymesh
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -228,6 +236,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      serviceAccountName: envoymesh
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -276,6 +285,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      serviceAccountName: envoymesh
 ---
 apiVersion: v1
 kind: Service
@@ -339,4 +349,5 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      serviceAccountName: envoymesh
 ---
