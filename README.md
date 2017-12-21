@@ -37,22 +37,22 @@ Use `build.sh` script to generate a sidecar container that includes
 
 1. Use the famous bookinfo app for demonstration:
 
-      kubectl apply -f samples/bookinfo.yaml
+        kubectl apply -f samples/bookinfo.yaml
 
 Access the web page by using `EXTERNAL_IP` of `productpage` service:
 `http://EXTERNAL_IP/productpage`
 
 2. Grant admin permissions to the application service account:
     
-      kubectl create clusterrolebinding envoymesh --clusterrole=cluster-admin --serviceaccount=default:envoymesh
+        kubectl create clusterrolebinding envoymesh --clusterrole=cluster-admin --serviceaccount=default:envoymesh
 
 3. Inject the sidecar using the following script:
 
-      cat samples/bookinfo.yaml \
-        | go run cmd/inject/main.go \
-        > samples/bookinfo-injected.yaml 
+        cat samples/bookinfo.yaml \
+          | go run cmd/inject/main.go \
+          > samples/bookinfo-injected.yaml 
 
-      kubectl apply -f samples/bookinfo-injected.yaml
+        kubectl apply -f samples/bookinfo-injected.yaml
 
 Access the web page again at `http://EXTERNAL_IP/productpage`. Traffic should
 be flowing through Envoy!
