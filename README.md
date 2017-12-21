@@ -1,5 +1,7 @@
 # envoymesh
 
+_Warning: under active development_
+
 Envoy mesh is an experimental simple service mesh built on top of
 [go-control-plane](https://github.com/envoyproxy/go-control-plane) that
 provides the following features:
