@@ -23,8 +23,6 @@ provides the following features:
 
 - This project uses jsonnet extensively for rapid prototyping of Envoy API
   processing logic.
-- To simplify the deployment model, sidecar container includes both the proxy
-  and its controller.
 - No support for health checks in the application deployment.
 
 ## Build instructions
@@ -56,6 +54,7 @@ Access the web page by using `EXTERNAL_IP` of `productpage` service:
           | go run cmd/inject/main.go \
           > samples/bookinfo-injected.yaml 
 
+        kubectl apply -f samples/mesh.yaml
         kubectl apply -f samples/bookinfo-injected.yaml
 
 Access the web page again at `http://EXTERNAL_IP/productpage`. Traffic should

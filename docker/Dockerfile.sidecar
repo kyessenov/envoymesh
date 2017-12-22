@@ -1,3 +1,4 @@
 FROM envoyproxy/envoy:latest
-ADD bootstrap.json /
-CMD ["sh", "-c", "/usr/local/bin/envoy -c bootstrap.json -l info --drain-time-s 1 --service-node ${POD_NAMESPACE}/${POD_NAME}"]
+ADD agent-linux /agent
+ADD bootstrap.jsonnet /
+ENTRYPOINT ["/agent"]

@@ -7,4 +7,5 @@
 # Visual Studio Code
 .vscode/
 /vendor
+/bootstrap.json
 /integration

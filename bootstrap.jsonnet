@@ -1,9 +1,10 @@
 function(ads_host="envoycontroller",
          ads_port=8080,
-         ads_cluster="ads")
+         ads_cluster="ads",
+         id="unknown-id")
     {
         node: {
-            id: "unknown-id",
+            id: id,
             cluster: "unknown-cluster",
         },
         dynamic_resources: {

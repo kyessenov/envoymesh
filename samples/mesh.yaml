@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: envoymesh
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoycontroller
+spec:
+  ports:
+  - port: 8080
+    name: http
+  selector:
+    app: envoycontroller
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: envoycontroller
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: envoycontroller
+    spec:
+      serviceAccountName: envoymesh
+      containers:
+      - name: controller
+        image: gcr.io/istio-testing/envoymesh:latest
+---

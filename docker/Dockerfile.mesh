@@ -1,4 +1,4 @@
 FROM scratch
 ADD controller-linux /controller
-ADD envoy.jsonnet /envoy.jsonnet
+ADD envoy.jsonnet /
 CMD ["/controller", "-v", "10", "--logtostderr"]
