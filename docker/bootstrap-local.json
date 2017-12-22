@@ -23,19 +23,18 @@
       }
    },
    "node": {
-      "cluster": "istio-proxy",
-      "id": "service-node"
+      "cluster": "unknown-cluster",
+      "id": "unknown-id"
    },
    "static_resources": {
       "clusters": [
          {
             "connect_timeout": "5s",
-            "dns_refresh_rate": "5s",
             "hosts": [
                {
                   "socket_address": {
-                     "address": "127.0.0.1",
-                     "port_value": 15003
+                     "address": "localhost",
+                     "port_value": 8080
                   }
                }
             ],

@@ -181,6 +181,10 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	glog.V(2).Info("Controller terminated")
 }
 
+func (c *Controller) QueueSchedule(job func()) {
+	c.queue.Push(Task{handler: func(interface{}, model.Event) error { job(); return nil }})
+}
+
 // Services implements a service catalog operation
 func (c *Controller) Services() ([]*model.Service, error) {
 	list := c.services.informer.GetStore().List()
@@ -476,8 +480,7 @@ func (c *Controller) GetIstioServiceAccounts(hostname string, ports []string) []
 	return saArray
 }
 
-// AppendServiceHandler implements a service catalog operation
-func (c *Controller) AppendServiceHandler(f func(*model.Service, model.Event)) error {
+func (c *Controller) RegisterServiceHandler(f func(*model.Service, model.Event)) {
 	c.services.handler.Append(func(obj interface{}, event model.Event) error {
 		svc := *obj.(*v1.Service)
 
@@ -493,11 +496,9 @@ func (c *Controller) AppendServiceHandler(f func(*model.Service, model.Event)) e
 		}
 		return nil
 	})
-	return nil
 }
 
-// AppendInstanceHandler implements a service catalog operation
-func (c *Controller) AppendInstanceHandler(f func(*model.ServiceInstance, model.Event)) error {
+func (c *Controller) RegisterInstanceHandler(f func(*model.ServiceInstance, model.Event)) {
 	c.endpoints.handler.Append(func(obj interface{}, event model.Event) error {
 		ep := *obj.(*v1.Endpoints)
 
@@ -516,5 +517,4 @@ func (c *Controller) AppendInstanceHandler(f func(*model.ServiceInstance, model.
 		}
 		return nil
 	})
-	return nil
 }

@@ -1,9 +1,10 @@
-function(id, xdsPort=15003)
+function(ads_host="envoycontroller",
+         ads_port=8080,
+         ads_cluster="ads")
     {
-        local ads_cluster = "ads",
         node: {
-            id: id,
-            cluster: "istio-proxy",
+            id: "unknown-id",
+            cluster: "unknown-cluster",
         },
         dynamic_resources: {
             lds_config: { ads: {} },
@@ -18,11 +19,10 @@ function(id, xdsPort=15003)
                 name: ads_cluster,
                 connect_timeout: "5s",
                 type: "LOGICAL_DNS",
-                dns_refresh_rate: "5s",
                 hosts: [{
                     socket_address: {
-                        address: "127.0.0.1",  // TODO
-                        port_value: xdsPort,
+                        address: ads_host,
+                        port_value: ads_port,
                     },
                 }],
                 lb_policy: "ROUND_ROBIN",

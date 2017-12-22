@@ -1,7 +1,3 @@
-local services = import "services.json";
-local instances = import "instances.json";
-local context = import "context.json";
-
 local util = {
     longest_suffix(a, b, j)::
         if j >= std.length(a) || j >= std.length(b) then
@@ -11,9 +7,9 @@ local util = {
         else
             self.longest_suffix(a, b, j + 1),
 
-    domains(service, port)::
+    domains(service, port, domain)::
         local service_names = std.split(service.hostname, ".");
-        local context_names = std.split(context.domain, ".");
+        local context_names = std.split(domain, ".");
         local j = self.longest_suffix(service_names, context_names, 0);
         local expansions = [
             std.join(".", service_names[0:std.length(service_names) - i])
@@ -147,14 +143,14 @@ local config = {
             if model.is_http(port.protocol)
         ]),
 
-    outbound_http_routes(services, port)::
+    outbound_http_routes(services, port, domain)::
         {
             name: "%d" % [port],
             virtual_hosts: [
                 {
                     name: "%s:%d" % [service.hostname, port_desc.port],
                     cluster:: config.outbound_cluster(service.hostname, {}, port_desc),
-                    domains: util.domains(service, port_desc.port),
+                    domains: util.domains(service, port_desc.port, domain),
                     routes: [
                         config.default_route(self.cluster, "default_route"),
                     ],
@@ -256,20 +252,24 @@ local config = {
         ],
 };
 
-{
-    listeners: [config.virtual_listener(15001)] +
-               config.sidecar_listeners(instances, services),
-    routes: [
-        config.outbound_http_routes(services, port)
-        for port in config.outbound_http_ports(services)
-    ],
-    clusters: [
-        listener.cluster
-        for listener in self.listeners
-        if 'cluster' in listener
-    ] + [
-        host.cluster
-        for route in self.routes
-        for host in route.virtual_hosts
-    ],
-}
+function(services=import "testdata/services.json",
+         instances=import "testdata/instances.json",
+         domain="default.svc.cluster.local",
+         port=15001)
+    {
+        listeners: [config.virtual_listener(port)] +
+                   config.sidecar_listeners(instances, services),
+        routes: [
+            config.outbound_http_routes(services, port, domain)
+            for port in config.outbound_http_ports(services)
+        ],
+        clusters: [
+            listener.cluster
+            for listener in self.listeners
+            if 'cluster' in listener
+        ] + [
+            host.cluster
+            for route in self.routes
+            for host in route.virtual_hosts
+        ],
+    }

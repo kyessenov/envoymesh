@@ -32,6 +32,7 @@ provides the following features:
 envoymesh uses standard go tooling. Requirements:
 - golang 1.9.2 or above
 - godep
+- (recommended) jsonnet or go-jsonnet
 
 Use `build.sh` script to generate a sidecar container that includes
 [envoy](https://www.envoyproxy.io/) and a controller binary.

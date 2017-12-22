@@ -29,12 +29,12 @@ package model
 // Handlers receive the notification event and the associated object.  Note
 // that all handlers must be appended before starting the controller.
 type Controller interface {
-	// AppendServiceHandler notifies about changes to the service catalog.
-	AppendServiceHandler(f func(*Service, Event)) error
+	// RegisterServiceHandler notifies about changes to the service catalog.
+	RegisterServiceHandler(f func(*Service, Event)) error
 
-	// AppendInstanceHandler notifies about changes to the service instances
+	// RegisterInstanceHandler notifies about changes to the service instances
 	// for a service.
-	AppendInstanceHandler(f func(*ServiceInstance, Event)) error
+	RegisterInstanceHandler(f func(*ServiceInstance, Event)) error
 
 	// Run until a signal is received
 	Run(stop <-chan struct{})

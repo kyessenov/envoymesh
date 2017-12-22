@@ -1,13 +1,12 @@
 # Injection script for inserting sidecar and iptables containers.
 # Modelled after istio kube-inject.
 # The input is a kubernetes resource JSON.
-function(o, image="gcr.io/istio-testing/envoymesh:latest", uid=1337, port=15001)
+function(o, image="gcr.io/istio-testing/envoysidecar:latest", uid=1337, port=15001)
     if o.kind == 'Deployment' then o {
         spec: super.spec + {
             template: super.template + {
                 spec: super.spec {
                     containers+: [{
-                        args: ["-v", "2", "--logtostderr"],
                         env: [
                             {
                                 name: "POD_NAME",

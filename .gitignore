@@ -7,5 +7,4 @@
 # Visual Studio Code
 .vscode/
 /vendor
-/controller-linux
 /integration

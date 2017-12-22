@@ -1,282 +1,148 @@
 package envoy
 
 import (
-	"crypto/md5"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
+	"reflect"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/envoyproxy/go-control-plane/api"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
 	"github.com/golang/glog"
-	jsonnet "github.com/google/go-jsonnet"
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/kyessenov/envoymesh/kube"
 	"github.com/kyessenov/envoymesh/model"
 )
 
-type Hasher struct{}
-
-func (Hasher) Hash(node *api.Node) (cache.Key, error) {
-	return "", nil
-}
-
 type Generator struct {
-	data map[string]string
+	count      int
+	controller *kube.Controller
+	cache      cache.Cache
+	services   []*model.Service
 
-	services      *kube.Controller
-	servicesHash  [md5.Size]byte
-	instancesHash [md5.Size]byte
-
-	vm     *jsonnet.VM
-	script string
-
-	version   int
-	endpoints []proto.Message
-	clusters  []proto.Message
-	routes    []proto.Message
-	listeners []proto.Message
-
-	cache cache.Cache
-	ID    string
+	nodes map[cache.Key]*Compiler
 }
 
-func NewGenerator(out cache.Cache, data map[string]string) *Generator {
-	return &Generator{
-		data:  data,
-		cache: out,
+const (
+	suffix = "cluster.local"
+)
+
+func NewKubeGenerator(kubeconfig string) (*Generator, error) {
+	g := &Generator{
+		nodes: make(map[cache.Key]*Compiler),
 	}
 
-}
-
-func NewKubeGenerator(out cache.Cache, id, domain, kubeconfig string) (*Generator, error) {
-	_, client, kuberr := kube.CreateInterface(kubeconfig)
-	if kuberr != nil {
-		return nil, multierror.Prefix(kuberr, "failed to connect to Kubernetes API.")
-	}
-
-	options := kube.ControllerOptions{
-		ResyncPeriod: 60 * time.Second,
-		DomainSuffix: "cluster.local",
-	}
-
-	bytes, err := json.Marshal(context{Domain: domain})
+	_, client, err := kube.CreateInterface(kubeconfig)
 	if err != nil {
 		return nil, err
 	}
 
-	ctl := kube.NewController(client, options)
-	g := NewGenerator(out, map[string]string{
-		"instances.json": "[]",
-		"services.json":  "[]",
-		"context.json":   string(bytes),
-	})
-	g.ID = id
-	g.services = ctl
+	options := kube.ControllerOptions{ResyncPeriod: 60 * time.Second, DomainSuffix: suffix}
+	g.controller = kube.NewController(client, options)
 
-	// register handlers
-	if err := ctl.AppendServiceHandler(g.UpdateServices); err != nil {
-		return nil, err
-	}
-	if err := ctl.AppendInstanceHandler(g.UpdateInstances); err != nil {
-		return nil, err
-	}
+	// callback: service modification
+	g.controller.RegisterServiceHandler(g.UpdateServices)
+
+	// callback: endpoint modification
+	g.controller.RegisterInstanceHandler(g.UpdateInstances)
+
+	// callback: registering a new node group (on a different loop)
+	g.cache = cache.NewSimpleCache(g, g.RegisterNodeGroup)
 
 	return g, nil
 }
 
 func (g *Generator) Run(stop <-chan struct{}) {
-	g.Generate()
-	if g.services != nil {
-		go g.services.Run(stop)
-	}
+	g.controller.Run(stop)
 	<-stop
 }
 
-type context struct {
-	Domain string `json:"domain"`
+func (g *Generator) Hash(node *api.Node) (cache.Key, error) {
+	return cache.Key(node.GetId()), nil
 }
 
-type stuff struct {
-	Listeners []interface{} `json:"listeners"`
-	Routes    []interface{} `json:"routes"`
-	Clusters  []interface{} `json:"clusters"`
+func (g *Generator) ConfigWatcher() cache.ConfigWatcher {
+	return g.cache
 }
 
-func (g *Generator) PrepareProgram() {
-	if g.vm == nil {
-		glog.Infof("prepare jsonnet VM")
-		vm := jsonnet.MakeVM()
-		content, err := ioutil.ReadFile("envoy.jsonnet")
-		if err != nil {
-			glog.Fatal(err)
+func (g *Generator) RegisterNodeGroup(key cache.Key) {
+	// move the task to single threaded queue
+	g.controller.QueueSchedule(func() {
+		if _, exists := g.nodes[key]; !exists {
+			glog.Infof("register node group %v", key)
+			parts := strings.Split(string(key), "/")
+			name, namespace := "", "default"
+			switch len(parts) {
+			case 1:
+				// name only, no namespace
+				name = parts[0]
+			case 2:
+				// namespace and name
+				name, namespace = parts[1], parts[0]
+			}
+			compiler, err := NewCompiler(name, namespace, suffix)
+			if err != nil {
+				glog.Fatal(err)
+			}
+			g.nodes[key] = compiler
+			glog.Infof("first update for node %v", key)
+			g.UpdateNode(key, compiler)
 		}
-		g.vm = vm
-		g.script = string(content)
-	}
+	})
 }
 
-func (g *Generator) Generate() {
-	g.PrepareProgram()
-	updated := false
+func (g *Generator) UpdateNode(key cache.Key, compiler *Compiler) {
+	instances, err := g.controller.WorkloadInstances(string(key))
+	if err != nil {
+		glog.Warning(err)
+	}
+	if instances == nil {
+		instances = []model.ServiceInstance{}
+	}
+	sort.Slice(instances, func(i, j int) bool {
+		return instances[i].Service.Hostname < instances[j].Service.Hostname ||
+			(instances[i].Service.Hostname == instances[j].Service.Hostname && instances[i].Endpoint.Port < instances[j].Endpoint.Port)
+	})
 
-	if g.clusters == nil || g.routes == nil || g.listeners == nil {
-		glog.Infof("generating snapshot %d", g.version)
-		g.vm.Importer(&jsonnet.MemoryImporter{g.data})
-		in, err := g.vm.EvaluateSnippet("envoy.jsonnet", g.script)
-		if err != nil {
-			glog.Warning(err)
-		}
-		glog.Infof("finished evaluation %d", g.version)
-
-		out := stuff{}
-		if err := json.Unmarshal([]byte(in), &out); err != nil {
-			glog.Warning(err)
-		}
-
-		g.clusters = make([]proto.Message, 0)
-		for _, cluster := range out.Clusters {
-			l := api.Cluster{}
-			s, _ := json.Marshal(cluster)
-			if err := jsonpb.UnmarshalString(string(s), &l); err != nil {
-				log.Fatal(err)
-			}
-			g.clusters = append(g.clusters, &l)
-		}
-
-		g.routes = make([]proto.Message, 0)
-		for _, route := range out.Routes {
-			r := api.RouteConfiguration{}
-			s, _ := json.Marshal(route)
-			if err := jsonpb.UnmarshalString(string(s), &r); err != nil {
-				log.Fatal(err)
-			}
-			g.routes = append(g.routes, &r)
-		}
-
-		g.listeners = make([]proto.Message, 0)
-		for _, listener := range out.Listeners {
-			l := api.Listener{}
-			s, _ := json.Marshal(listener)
-			if err := jsonpb.UnmarshalString(string(s), &l); err != nil {
-				log.Fatal(err)
-			}
-			g.listeners = append(g.listeners, &l)
-		}
-
-		updated = true
+	updated, err := compiler.Update(g.services, instances)
+	if err != nil {
+		glog.Warning(err)
 	}
 
-	// populate endpoints from clusters
-	if g.services != nil {
-		endpoints := make([]proto.Message, 0, len(g.clusters))
-		for _, msg := range g.clusters {
-			cluster := msg.(*api.Cluster)
-			// note that EDS present service name instead of cluster name here
-			if cluster.EdsClusterConfig != nil {
-				hostname, ports, labelcols := model.ParseServiceKey(cluster.EdsClusterConfig.ServiceName)
-				instances, err := g.services.Instances(hostname, ports.GetNames(), labelcols)
-				if err != nil {
-					glog.Warning(err)
-				}
-				addresses := make([]*api.LbEndpoint, 0, len(instances))
-				for _, instance := range instances {
-					addresses = append(addresses, &api.LbEndpoint{
-						Endpoint: &api.Endpoint{
-							Address: &api.Address{
-								Address: &api.Address_SocketAddress{
-									SocketAddress: &api.SocketAddress{
-										Address:       instance.Endpoint.Address,
-										PortSpecifier: &api.SocketAddress_PortValue{PortValue: uint32(instance.Endpoint.Port)},
-									},
-								},
-							},
-						},
-					})
-				}
-				endpoints = append(endpoints, &api.ClusterLoadAssignment{
-					ClusterName: cluster.EdsClusterConfig.ServiceName,
-					Endpoints:   []*api.LocalityLbEndpoints{{LbEndpoints: addresses}}})
-			}
-		}
-		g.endpoints = endpoints
-		updated = true
-		// TODO: avoid churn by sorting and caching
-	}
+	updatedEndpoints := compiler.UpdateEndpoints(g.controller)
 
-	if updated && g.cache != nil {
-		g.version++
-		snapshot := cache.NewSnapshot(fmt.Sprintf("%d", g.version),
-			g.endpoints,
-			g.clusters,
-			g.routes,
-			g.listeners)
-		g.cache.SetSnapshot("", snapshot)
+	if updated || updatedEndpoints {
+		g.count++
+		glog.Infof("update node %v (updated=%t, updatedEndpoints=%t, count=%d)", key, updated, updatedEndpoints, g.count)
+		g.cache.SetSnapshot(key, compiler.Snapshot(g.count))
 	}
 }
 
 func (g *Generator) UpdateServices(*model.Service, model.Event) {
-	out, err := g.services.Services()
+	// reload services
+	services, err := g.controller.Services()
 	if err != nil {
 		glog.Warning(err)
-		return
 	}
-	if out == nil {
-		out = []*model.Service{}
+	if services == nil {
+		services = []*model.Service{}
 	}
+	sort.Slice(services, func(i, j int) bool { return services[i].Hostname < services[j].Hostname })
 
-	// sort by hostnames
-	sort.Slice(out, func(i, j int) bool { return out[i].Hostname < out[j].Hostname })
-
-	bytes, err := json.Marshal(out)
-	if err != nil {
-		glog.Warning(err)
+	if reflect.DeepEqual(services, g.services) {
 		return
 	}
 
-	if hash := md5.Sum(bytes); hash != g.servicesHash {
-		g.routes = nil
-		g.servicesHash = hash
-		g.data["services.json"] = string(bytes)
-	}
-
-	g.Generate()
+	glog.Infof("update services (services=%d)", len(services))
+	g.services = services
+	g.Update()
 }
 
 func (g *Generator) UpdateInstances(*model.ServiceInstance, model.Event) {
-	out, err := g.services.WorkloadInstances(g.ID)
-	if err != nil {
-		glog.Warning(err)
-		return
+	g.Update()
+}
+
+func (g *Generator) Update() {
+	for key, compiler := range g.nodes {
+		g.UpdateNode(key, compiler)
 	}
-
-	if out == nil {
-		out = []model.ServiceInstance{}
-	}
-
-	// sort by hostname/ip/port
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].Service.Hostname < out[j].Service.Hostname ||
-			(out[i].Service.Hostname == out[j].Service.Hostname &&
-				out[i].Endpoint.Port < out[j].Endpoint.Port)
-	})
-
-	bytes, err := json.Marshal(out)
-	if err != nil {
-		glog.Warning(err)
-		return
-	}
-
-	if hash := md5.Sum(bytes); hash != g.instancesHash {
-		g.routes = nil
-		g.instancesHash = hash
-		g.data["instances.json"] = string(bytes)
-	}
-
-	g.Generate()
 }
