@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -17,9 +16,6 @@ func main() {
 	content, err := ioutil.ReadFile("bootstrap.jsonnet")
 	if err != nil {
 		log.Fatal(err)
-	}
-	if id == "" {
-		id = fmt.Sprintf("%s/%s", os.Getenv("POD_NAMESPACE"), os.Getenv("POD_NAME"))
 	}
 	vm.TLAVar("ads_host", ads)
 	vm.TLAVar("id", id)
@@ -53,7 +49,7 @@ var (
 func init() {
 	flag.StringVar(&envoy, "envoy", "/usr/local/bin/envoy", "Envoy binary")
 	flag.StringVar(&config, "config", "/tmp/bootstrap.json", "Envoy config output")
-	flag.StringVar(&ads, "ads", "envoycontroller", "Envoy mesh controller host address")
+	flag.StringVar(&ads, "ads", "localhost", "Envoy mesh controller host address")
 	flag.StringVar(&script, "script", "bootstrap.jsonnet", "bootstrap script")
 	flag.StringVar(&id, "id", "", "Workload ID")
 }

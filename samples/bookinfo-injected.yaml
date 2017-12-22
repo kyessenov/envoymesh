@@ -29,7 +29,12 @@ spec:
         name: details
         ports:
         - containerPort: 9080
-      - env:
+      - args:
+        - --id
+        - $(POD_NAMESPACE)/$(POD_NAME)
+        - --ads
+        - envoycontroller
+        env:
         - name: POD_NAME
           valueFrom:
             fieldRef:
@@ -93,7 +98,12 @@ spec:
         name: ratings
         ports:
         - containerPort: 9080
-      - env:
+      - args:
+        - --id
+        - $(POD_NAMESPACE)/$(POD_NAME)
+        - --ads
+        - envoycontroller
+        env:
         - name: POD_NAME
           valueFrom:
             fieldRef:
@@ -157,7 +167,12 @@ spec:
         name: reviews
         ports:
         - containerPort: 9080
-      - env:
+      - args:
+        - --id
+        - $(POD_NAMESPACE)/$(POD_NAME)
+        - --ads
+        - envoycontroller
+        env:
         - name: POD_NAME
           valueFrom:
             fieldRef:
@@ -208,7 +223,12 @@ spec:
         name: reviews
         ports:
         - containerPort: 9080
-      - env:
+      - args:
+        - --id
+        - $(POD_NAMESPACE)/$(POD_NAME)
+        - --ads
+        - envoycontroller
+        env:
         - name: POD_NAME
           valueFrom:
             fieldRef:
@@ -259,7 +279,12 @@ spec:
         name: reviews
         ports:
         - containerPort: 9080
-      - env:
+      - args:
+        - --id
+        - $(POD_NAMESPACE)/$(POD_NAME)
+        - --ads
+        - envoycontroller
+        env:
         - name: POD_NAME
           valueFrom:
             fieldRef:
@@ -325,7 +350,12 @@ spec:
         name: productpage
         ports:
         - containerPort: 9080
-      - env:
+      - args:
+        - --id
+        - $(POD_NAMESPACE)/$(POD_NAME)
+        - --ads
+        - envoycontroller
+        env:
         - name: POD_NAME
           valueFrom:
             fieldRef:

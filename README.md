@@ -41,7 +41,7 @@ For local development:
 # Start the controller 
 go run cmd/controller/main.go  --logtostderr -v 2 --kubeconfig ~/.kube/config
 # Start the proxy
-go run cmd/agent/main.go --envoy=$(which envoy) --ads=localhost --id=default/pod_name
+go run cmd/agent/main.go --envoy=$(which envoy)
 ```
 
 ## Test instructions
