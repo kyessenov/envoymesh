@@ -39,9 +39,12 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoysidecar:latest
-        name: sidecar
+        name: envoy
         securityContext:
           runAsUser: 1337
+        volumeMounts:
+        - mountPath: /tmp
+          name: envoy-config
       initContainers:
       - args:
         - -p
@@ -54,6 +57,10 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: envoy-config
 ---
 apiVersion: v1
 kind: Service
@@ -96,9 +103,12 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoysidecar:latest
-        name: sidecar
+        name: envoy
         securityContext:
           runAsUser: 1337
+        volumeMounts:
+        - mountPath: /tmp
+          name: envoy-config
       initContainers:
       - args:
         - -p
@@ -111,6 +121,10 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: envoy-config
 ---
 apiVersion: v1
 kind: Service
@@ -153,9 +167,12 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoysidecar:latest
-        name: sidecar
+        name: envoy
         securityContext:
           runAsUser: 1337
+        volumeMounts:
+        - mountPath: /tmp
+          name: envoy-config
       initContainers:
       - args:
         - -p
@@ -168,6 +185,10 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: envoy-config
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -197,9 +218,12 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoysidecar:latest
-        name: sidecar
+        name: envoy
         securityContext:
           runAsUser: 1337
+        volumeMounts:
+        - mountPath: /tmp
+          name: envoy-config
       initContainers:
       - args:
         - -p
@@ -212,6 +236,10 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: envoy-config
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -241,9 +269,12 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoysidecar:latest
-        name: sidecar
+        name: envoy
         securityContext:
           runAsUser: 1337
+        volumeMounts:
+        - mountPath: /tmp
+          name: envoy-config
       initContainers:
       - args:
         - -p
@@ -256,6 +287,10 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: envoy-config
 ---
 apiVersion: v1
 kind: Service
@@ -300,9 +335,12 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: gcr.io/istio-testing/envoysidecar:latest
-        name: sidecar
+        name: envoy
         securityContext:
           runAsUser: 1337
+        volumeMounts:
+        - mountPath: /tmp
+          name: envoy-config
       initContainers:
       - args:
         - -p
@@ -315,4 +353,8 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+      volumes:
+      - emptyDir:
+          medium: Memory
+        name: envoy-config
 ---

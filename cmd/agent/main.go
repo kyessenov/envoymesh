@@ -18,19 +18,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if id == "" {
+		id = fmt.Sprintf("%s/%s", os.Getenv("POD_NAMESPACE"), os.Getenv("POD_NAME"))
+	}
 	vm.TLAVar("ads_host", ads)
-	vm.TLAVar("id", fmt.Sprintf("%s/%s", os.Getenv("POD_NAMESPACE"), os.Getenv("POD_NAME")))
+	vm.TLAVar("id", id)
 	out, err := vm.EvaluateSnippet(script, string(content))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = ioutil.WriteFile("bootstrap.json", []byte(out), 0644)
+	err = ioutil.WriteFile(config, []byte(out), 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	cmd := exec.Command(envoy, "-c", "bootstrap.json", "-l", "info", "--drain-time-s", "1")
+	cmd := exec.Command(envoy, "-c", config, "--v2-config-only", "-l", "info", "--drain-time-s", "1")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -41,12 +44,16 @@ func main() {
 
 var (
 	envoy  string
+	config string
 	ads    string
 	script string
+	id     string
 )
 
 func init() {
 	flag.StringVar(&envoy, "envoy", "/usr/local/bin/envoy", "Envoy binary")
+	flag.StringVar(&config, "config", "/tmp/bootstrap.json", "Envoy config output")
 	flag.StringVar(&ads, "ads", "envoycontroller", "Envoy mesh controller host address")
 	flag.StringVar(&script, "script", "bootstrap.jsonnet", "bootstrap script")
+	flag.StringVar(&id, "id", "", "Workload ID")
 }

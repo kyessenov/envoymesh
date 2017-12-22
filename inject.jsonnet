@@ -26,11 +26,14 @@ function(o, image="gcr.io/istio-testing/envoysidecar:latest", uid=1337, port=150
                             },
                         ],
                         image: image,
-                        name: "sidecar",
+                        name: "envoy",
                         securityContext: {
                             runAsUser: uid,
                         },
-
+                        volumeMounts: [{
+                            mountPath: "/tmp",
+                            name: "envoy-config",
+                        }],
                     }],
                     initContainers+: [{
                         args: ["-p", std.toString(port), "-u", std.toString(uid)],
@@ -41,6 +44,10 @@ function(o, image="gcr.io/istio-testing/envoysidecar:latest", uid=1337, port=150
                                 add: ["NET_ADMIN"],
                             },
                         },
+                    }],
+                    volumes+: [{
+                        name: "envoy-config",
+                        emptyDir: { medium: "Memory" },
                     }],
                 },
             },
