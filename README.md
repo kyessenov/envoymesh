@@ -32,8 +32,17 @@ envoymesh uses standard go tooling. Requirements:
 - godep
 - (recommended) jsonnet or go-jsonnet
 
-Use `build.sh` script to generate a sidecar container that includes
+Use `build.sh` script to generate and push containers for the sidecar
 [envoy](https://www.envoyproxy.io/) and a controller binary.
+
+For local development:
+
+```bash
+# Start the controller 
+go run cmd/controller/main.go  --logtostderr -v 2 --kubeconfig ~/.kube/config
+# Start the proxy
+go run cmd/agent/main.go --envoy=$(which envoy) --ads=localhost --id=default/pod_name
+```
 
 ## Test instructions
 

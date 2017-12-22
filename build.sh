@@ -3,20 +3,20 @@
 set -o errexit
 set -o nounset
 set -o pipefail
-set -x
 
-pushd docker
+DOCKER_HUB="${DOCKER_HUB:-gcr.io/istio-testing}"
+DOCKER_TAG="${DOCKER_TAG:-latest}"
 
 echo Building sidecar
-cp ../bootstrap.jsonnet .
-CGO_ENABLED=0 GOOS=linux go build -i -o agent-linux github.com/kyessenov/envoymesh/cmd/agent
-docker build -f Dockerfile.sidecar -t gcr.io/istio-testing/envoysidecar:latest .
-docker push gcr.io/istio-testing/envoysidecar:latest
+CGO_ENABLED=0 GOOS=linux go build -i -o docker/agent-linux github.com/kyessenov/envoymesh/cmd/agent
+cp bootstrap.jsonnet docker/
+docker build -f docker/Dockerfile.sidecar -t ${DOCKER_HUB}/envoysidecar:${DOCKER_TAG} docker
 
 echo Building controller
-CGO_ENABLED=0 GOOS=linux go build -i -o controller-linux github.com/kyessenov/envoymesh/cmd/controller
-cp ../envoy.jsonnet .
-docker build -f Dockerfile.mesh -t gcr.io/istio-testing/envoymesh:latest .
-docker push gcr.io/istio-testing/envoymesh:latest
+CGO_ENABLED=0 GOOS=linux go build -i -o docker/controller-linux github.com/kyessenov/envoymesh/cmd/controller
+cp envoy.jsonnet docker/
+docker build -f docker/Dockerfile.mesh -t ${DOCKER_HUB}/envoymesh:${DOCKER_TAG} docker
 
-popd
+echo Pushing images
+docker push ${DOCKER_HUB}/envoysidecar:${DOCKER_TAG}
+docker push ${DOCKER_HUB}/envoymesh:${DOCKER_TAG}
