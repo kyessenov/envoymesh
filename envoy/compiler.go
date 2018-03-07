@@ -6,10 +6,11 @@ import (
 	"io/ioutil"
 	"reflect"
 
-	"github.com/envoyproxy/go-control-plane/api"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
 	"github.com/golang/glog"
 	jsonnet "github.com/google/go-jsonnet"
 	"github.com/kyessenov/envoymesh/model"
@@ -36,10 +37,10 @@ type Compiler struct {
 	instances []model.ServiceInstance
 
 	// outputs
-	listeners []proto.Message
-	routes    []proto.Message
-	clusters  []proto.Message
-	endpoints []proto.Message
+	listeners []cache.Resource
+	routes    []cache.Resource
+	clusters  []cache.Resource
+	endpoints []cache.Resource
 }
 
 func NewCompiler(name, namespace, suffix string) (*Compiler, error) {
@@ -54,9 +55,9 @@ func NewCompiler(name, namespace, suffix string) (*Compiler, error) {
 		script:    string(content),
 		id:        fmt.Sprintf("%s.%s.pod.%s", name, namespace, suffix),
 		domain:    fmt.Sprintf("%s.svc.%s", namespace, suffix),
-		listeners: make([]proto.Message, 0),
-		routes:    make([]proto.Message, 0),
-		clusters:  make([]proto.Message, 0),
+		listeners: make([]cache.Resource, 0),
+		routes:    make([]cache.Resource, 0),
+		clusters:  make([]cache.Resource, 0),
 	}, nil
 }
 
@@ -94,9 +95,9 @@ func (g *Compiler) Update(services []*model.Service, instances []model.ServiceIn
 		return true, err
 	}
 
-	g.clusters = make([]proto.Message, 0)
+	g.clusters = make([]cache.Resource, 0)
 	for _, cluster := range out.Clusters {
-		l := api.Cluster{}
+		l := v2.Cluster{}
 		s, _ := json.Marshal(cluster)
 		if err := jsonpb.UnmarshalString(string(s), &l); err != nil {
 			return true, err
@@ -104,9 +105,9 @@ func (g *Compiler) Update(services []*model.Service, instances []model.ServiceIn
 		g.clusters = append(g.clusters, &l)
 	}
 
-	g.routes = make([]proto.Message, 0)
+	g.routes = make([]cache.Resource, 0)
 	for _, route := range out.Routes {
-		r := api.RouteConfiguration{}
+		r := v2.RouteConfiguration{}
 		s, _ := json.Marshal(route)
 		if err := jsonpb.UnmarshalString(string(s), &r); err != nil {
 			return true, err
@@ -114,9 +115,9 @@ func (g *Compiler) Update(services []*model.Service, instances []model.ServiceIn
 		g.routes = append(g.routes, &r)
 	}
 
-	g.listeners = make([]proto.Message, 0)
+	g.listeners = make([]cache.Resource, 0)
 	for _, listener := range out.Listeners {
-		l := api.Listener{}
+		l := v2.Listener{}
 		s, _ := json.Marshal(listener)
 		if err := jsonpb.UnmarshalString(string(s), &l); err != nil {
 			return true, err
@@ -128,9 +129,9 @@ func (g *Compiler) Update(services []*model.Service, instances []model.ServiceIn
 }
 
 func (g *Compiler) UpdateEndpoints(controller model.ServiceDiscovery) bool {
-	endpoints := make([]proto.Message, 0, len(g.clusters))
+	endpoints := make([]cache.Resource, 0, len(g.clusters))
 	for _, msg := range g.clusters {
-		cluster := msg.(*api.Cluster)
+		cluster := msg.(*v2.Cluster)
 		// note that EDS presents service name instead of cluster name here
 		if cluster.EdsClusterConfig != nil {
 			hostname, ports, labelcols := model.ParseServiceKey(cluster.EdsClusterConfig.ServiceName)
@@ -138,24 +139,24 @@ func (g *Compiler) UpdateEndpoints(controller model.ServiceDiscovery) bool {
 			if err != nil {
 				glog.Warning(err)
 			}
-			addresses := make([]*api.LbEndpoint, 0, len(instances))
+			addresses := make([]endpoint.LbEndpoint, 0, len(instances))
 			for _, instance := range instances {
-				addresses = append(addresses, &api.LbEndpoint{
-					Endpoint: &api.Endpoint{
-						Address: &api.Address{
-							Address: &api.Address_SocketAddress{
-								SocketAddress: &api.SocketAddress{
+				addresses = append(addresses, endpoint.LbEndpoint{
+					Endpoint: &endpoint.Endpoint{
+						Address: &core.Address{
+							Address: &core.Address_SocketAddress{
+								SocketAddress: &core.SocketAddress{
 									Address:       instance.Endpoint.Address,
-									PortSpecifier: &api.SocketAddress_PortValue{PortValue: uint32(instance.Endpoint.Port)},
+									PortSpecifier: &core.SocketAddress_PortValue{PortValue: uint32(instance.Endpoint.Port)},
 								},
 							},
 						},
 					},
 				})
 			}
-			endpoints = append(endpoints, &api.ClusterLoadAssignment{
+			endpoints = append(endpoints, &v2.ClusterLoadAssignment{
 				ClusterName: cluster.EdsClusterConfig.ServiceName,
-				Endpoints:   []*api.LocalityLbEndpoints{{LbEndpoints: addresses}}})
+				Endpoints:   []endpoint.LocalityLbEndpoints{{LbEndpoints: addresses}}})
 		}
 	}
 

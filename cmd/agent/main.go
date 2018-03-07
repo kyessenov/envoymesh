@@ -29,7 +29,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Printf("id %q, cluster %q", id, cluster)
+
 	cmd := exec.Command(envoy, "-c", config, "--v2-config-only", "-l", "info", "--drain-time-s", "1")
+
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -39,11 +42,12 @@ func main() {
 }
 
 var (
-	envoy  string
-	config string
-	ads    string
-	script string
-	id     string
+	envoy   string
+	config  string
+	ads     string
+	script  string
+	id      string
+	cluster string
 )
 
 func init() {
@@ -51,5 +55,6 @@ func init() {
 	flag.StringVar(&config, "config", "/tmp/bootstrap.json", "Envoy config output")
 	flag.StringVar(&ads, "ads", "localhost", "Envoy mesh controller host address")
 	flag.StringVar(&script, "script", "bootstrap.jsonnet", "bootstrap script")
-	flag.StringVar(&id, "id", "", "Workload ID")
+	flag.StringVar(&id, "id", "unknown-id", "Workload ID")
+	flag.StringVar(&cluster, "cluster", "unknown-cluster", "Service cluster")
 }

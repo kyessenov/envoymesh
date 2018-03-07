@@ -12,7 +12,7 @@ function(ads_host="envoycontroller",
             cds_config: { ads: {} },
             ads_config: {
                 api_type: "GRPC",
-                cluster_name: [ads_cluster],
+                cluster_names: [ads_cluster],
             },
         },
         static_resources: {

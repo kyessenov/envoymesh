@@ -7,7 +7,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	"github.com/envoyproxy/go-control-plane/api"
+	"github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
 	"github.com/envoyproxy/go-control-plane/pkg/server"
 	"github.com/golang/glog"
 	"github.com/kyessenov/envoymesh/envoy"
@@ -23,13 +23,13 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	srv := server.NewServer(generator.ConfigWatcher())
+	srv := server.NewServer(generator.Cache(), generator)
 	grpcServer := grpc.NewServer()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		glog.Fatalf("failed to listen: %v", err)
 	}
-	api.RegisterAggregatedDiscoveryServiceServer(grpcServer, srv)
+	v2.RegisterAggregatedDiscoveryServiceServer(grpcServer, srv)
 
 	go generator.Run(stop)
 

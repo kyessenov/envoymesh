@@ -6,7 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/envoyproxy/go-control-plane/api"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 	"github.com/golang/glog"
 	"github.com/kyessenov/envoymesh/kube"
@@ -16,10 +17,10 @@ import (
 type Generator struct {
 	count      int
 	controller *kube.Controller
-	cache      cache.Cache
+	cache      cache.SnapshotCache
 	services   []*model.Service
 
-	nodes map[cache.Key]*Compiler
+	nodes map[string]*Compiler
 }
 
 const (
@@ -28,7 +29,7 @@ const (
 
 func NewKubeGenerator(kubeconfig string) (*Generator, error) {
 	g := &Generator{
-		nodes: make(map[cache.Key]*Compiler),
+		nodes: make(map[string]*Compiler),
 	}
 
 	_, client, err := kube.CreateInterface(kubeconfig)
@@ -46,7 +47,7 @@ func NewKubeGenerator(kubeconfig string) (*Generator, error) {
 	g.controller.RegisterInstanceHandler(g.UpdateInstances)
 
 	// callback: registering a new node group (on a different loop)
-	g.cache = cache.NewSimpleCache(g, g.RegisterNodeGroup)
+	g.cache = cache.NewSnapshotCache(true, g, g)
 
 	return g, nil
 }
@@ -56,19 +57,18 @@ func (g *Generator) Run(stop <-chan struct{}) {
 	<-stop
 }
 
-func (g *Generator) Hash(node *api.Node) (cache.Key, error) {
-	return cache.Key(node.GetId()), nil
+func (g *Generator) ID(node *core.Node) string {
+	return node.GetId()
 }
+func (g *Generator) Infof(format string, args ...interface{})  { glog.Infof(format, args...) }
+func (g *Generator) Errorf(format string, args ...interface{}) { glog.Errorf(format, args...) }
+func (g *Generator) Cache() cache.Cache                        { return g.cache }
 
-func (g *Generator) ConfigWatcher() cache.ConfigWatcher {
-	return g.cache
-}
-
-func (g *Generator) RegisterNodeGroup(key cache.Key) {
+func (g *Generator) OnStreamRequest(id int64, req *v2.DiscoveryRequest) {
 	// move the task to single threaded queue
 	g.controller.QueueSchedule(func() {
+		key := g.ID(req.GetNode())
 		if _, exists := g.nodes[key]; !exists {
-			glog.Infof("register node group %v", key)
 			parts := strings.Split(string(key), "/")
 			name, namespace := "", "default"
 			switch len(parts) {
@@ -84,13 +84,18 @@ func (g *Generator) RegisterNodeGroup(key cache.Key) {
 				glog.Fatal(err)
 			}
 			g.nodes[key] = compiler
-			glog.Infof("first update for node %v", key)
-			g.UpdateNode(key, compiler)
+			g.UpdateNode(key)
 		}
 	})
 }
+func (g *Generator) OnStreamOpen(int64, string)                                           {}
+func (g *Generator) OnStreamClosed(int64)                                                 {}
+func (g *Generator) OnStreamResponse(int64, *v2.DiscoveryRequest, *v2.DiscoveryResponse)  {}
+func (g *Generator) OnFetchRequest(req *v2.DiscoveryRequest)                              {}
+func (g *Generator) OnFetchResponse(req *v2.DiscoveryRequest, resp *v2.DiscoveryResponse) {}
 
-func (g *Generator) UpdateNode(key cache.Key, compiler *Compiler) {
+func (g *Generator) UpdateNode(key string) {
+	compiler := g.nodes[key]
 	instances, err := g.controller.WorkloadInstances(string(key))
 	if err != nil {
 		glog.Warning(err)
@@ -142,7 +147,7 @@ func (g *Generator) UpdateInstances(*model.ServiceInstance, model.Event) {
 }
 
 func (g *Generator) Update() {
-	for key, compiler := range g.nodes {
-		g.UpdateNode(key, compiler)
+	for key := range g.nodes {
+		g.UpdateNode(key)
 	}
 }
