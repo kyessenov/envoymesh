@@ -1,4 +1,5 @@
 FROM scratch
 ADD controller-linux /controller
-ADD envoy.jsonnet /
-CMD ["/controller", "-v", "10", "--logtostderr"]
+# Mount as configmap, re-read on every change
+WORKDIR /script
+CMD ["/controller", "-v", "4", "--logtostderr"]

@@ -29,4 +29,11 @@ spec:
       containers:
       - name: controller
         image: gcr.io/istio-testing/envoymesh:latest
+        volumeMounts:
+          - name: jsonnet
+            mountPath: /script
+      volumes:
+        - name: jsonnet
+          configMap:
+            name: jsonnet
 ---

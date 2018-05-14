@@ -63,6 +63,12 @@ Access the web page by using `EXTERNAL_IP` of `productpage` service:
           | go run cmd/inject/main.go \
           > samples/bookinfo-injected.yaml 
 
+4. Submit the envoy config generation script:
+
+        kubectl create configmap jsonnet --from-file envoy.jsonnet
+
+5. Deploy the mesh:
+
         kubectl apply -f samples/mesh.yaml
         kubectl apply -f samples/bookinfo-injected.yaml
 
