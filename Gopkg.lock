@@ -60,7 +60,7 @@
     "pkg/server",
     "pkg/util"
   ]
-  revision = "1b590377404fd6e84d0330b4449b9e39c9cd4546"
+  revision = "7bfb3532b6115ef3679fa5739ce94d9b22e3705b"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
