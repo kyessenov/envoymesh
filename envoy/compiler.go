@@ -31,7 +31,7 @@ type Compiler struct {
 	script string
 
 	// inputs
-	id        string
+	uid       string
 	domain    string
 	services  []*model.Service
 	instances []model.ServiceInstance
@@ -43,6 +43,7 @@ type Compiler struct {
 	endpoints []cache.Resource
 }
 
+// NewCompiler instantiates a jsonnet compiler
 func NewCompiler(name, namespace, suffix string) (*Compiler, error) {
 	glog.Infof("prepare jsonnet VM")
 	vm := jsonnet.MakeVM()
@@ -53,7 +54,7 @@ func NewCompiler(name, namespace, suffix string) (*Compiler, error) {
 	return &Compiler{
 		vm:        vm,
 		script:    string(content),
-		id:        fmt.Sprintf("%s.%s.pod.%s", name, namespace, suffix),
+		uid:       fmt.Sprintf("kubernetes://%s.%s", name, namespace),
 		domain:    fmt.Sprintf("%s.svc.%s", namespace, suffix),
 		listeners: make([]cache.Resource, 0),
 		routes:    make([]cache.Resource, 0),
@@ -80,15 +81,16 @@ func (g *Compiler) Update(services []*model.Service, instances []model.ServiceIn
 		return false, err
 	}
 
-	glog.Infof("generating snapshot %d for %s", g.count, g.id)
+	glog.Infof("generating snapshot %d for %s", g.count, g.uid)
 	g.vm.TLACode("services", string(servicesJSON))
 	g.vm.TLACode("instances", string(instancesJSON))
+	g.vm.TLAVar("uid", g.uid)
 	g.vm.TLAVar("domain", g.domain)
 	in, err := g.vm.EvaluateSnippet("envoy.jsonnet", g.script)
 	if err != nil {
 		return true, err
 	}
-	glog.Infof("finished evaluation %d for %s", g.count, g.id)
+	glog.Infof("finished evaluation %d for %s", g.count, g.uid)
 
 	out := output{}
 	if err := json.Unmarshal([]byte(in), &out); err != nil {
@@ -128,7 +130,7 @@ func (g *Compiler) Update(services []*model.Service, instances []model.ServiceIn
 	return true, nil
 }
 
-func (g *Compiler) UpdateEndpoints(controller model.ServiceDiscovery) bool {
+func (g *Compiler) updateEndpoints(controller model.ServiceDiscovery) bool {
 	endpoints := make([]cache.Resource, 0, len(g.clusters))
 	for _, msg := range g.clusters {
 		cluster := msg.(*v2.Cluster)

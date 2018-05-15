@@ -8,21 +8,21 @@ local util = {
             self.longest_suffix(a, b, j + 1),
 
     domains(service, port, domain)::
-        local service_names = std.split(service.hostname, ".");
-        local context_names = std.split(domain, ".");
+        local service_names = std.split(service.hostname, '.');
+        local context_names = std.split(domain, '.');
         local j = self.longest_suffix(service_names, context_names, 0);
         local expansions = [
-            std.join(".", service_names[0:std.length(service_names) - i])
+            std.join('.', service_names[0:std.length(service_names) - i])
             for i in std.range(0, j)
         ] + if 'address' in service then [service.address] else [];
-        expansions + ["%s:%d" % [host, port] for host in expansions],
+        expansions + ['%s:%d' % [host, port] for host in expansions],
 
 };
 
 local model = {
     key(hostname, labels, port_desc)::
-        local labels_strings = ["%s=%s" % [key, labels[key]] for key in std.objectFields(labels)];
-        "%s|%s|%s" % [hostname, port_desc.name, std.join(',', std.sort(labels_strings))],
+        local labels_strings = ['%s=%s' % [key, labels[key]] for key in std.objectFields(labels)];
+        '%s|%s|%s' % [hostname, port_desc.name, std.join(',', std.sort(labels_strings))],
 
     is_http2(protocol)::
         protocol == 'HTTP2' || protocol == 'GRPC',
@@ -40,30 +40,30 @@ local model = {
 local config = {
     inbound_cluster(port, protocol)::
         {
-            name: "in.%d" % [port],
-            connect_timeout: "5s",
-            type: "STATIC",
-            lb_policy: "ROUND_ROBIN",
+            name: 'in.%d' % [port],
+            connect_timeout: '5s',
+            type: 'STATIC',
+            lb_policy: 'ROUND_ROBIN',
             hosts: [{
                 socket_address: {
-                    address: "127.0.0.1",
+                    address: '127.0.0.1',
                     port_value: port,
                 },
             }],
-            [if model.is_http2(protocol) then "http2_protocol_options"]: {},
+            [if model.is_http2(protocol) then 'http2_protocol_options']: {},
         },
 
     outbound_cluster(hostname, labels, port_desc)::
         local key = model.key(hostname, labels, port_desc);
         {
             name: key,
-            connect_timeout: "5s",
-            type: "EDS",
+            connect_timeout: '5s',
+            type: 'EDS',
             eds_cluster_config: {
                 service_name: key,
                 eds_config: { ads: {} },
             },
-            lb_policy: "ROUND_ROBIN",
+            lb_policy: 'ROUND_ROBIN',
             hostname:: hostname,
         },
 
@@ -80,13 +80,13 @@ local config = {
             },
         },
 
-    inbound_listeners(instances)::
+    inbound_listeners(uid, instances)::
         [{
             local protocol = instance.endpoint.service_port.protocol,
             local port = instance.endpoint.port,
             local cluster = config.inbound_cluster(port, protocol),
-            local prefix = "in_%s_%d" % [protocol, port],
-            name: "in_%s_%s_%d" % [protocol, instance.endpoint.ip_address, port],
+            local prefix = 'in_%s_%d' % [protocol, port],
+            name: 'in_%s_%s_%d' % [protocol, instance.endpoint.ip_address, port],
             cluster:: cluster,
             address: {
                 socket_address: {
@@ -99,32 +99,52 @@ local config = {
                     filters: [
                         if model.is_http(protocol) then
                             {
-                                name: "envoy.http_connection_manager",
+                                name: 'envoy.http_connection_manager',
                                 config: {
                                     stat_prefix: prefix,
-                                    codec_type: "AUTO",
+                                    codec_type: 'AUTO',
                                     access_log: [{
-                                        name: "envoy.file_access_log",
-                                        config: { path: "/dev/stdout" },
+                                        name: 'envoy.file_access_log',
+                                        config: { path: '/dev/stdout' },
                                     }],
                                     generate_request_id: true,
                                     route_config: {
                                         name: prefix,
                                         virtual_hosts: [{
                                             name: prefix,
-                                            domains: ["*"],
-                                            routes: [config.default_route(cluster, "inbound_route")],
+                                            domains: ['*'],
+                                            routes: [config.default_route(cluster, 'inbound_route')],
                                         }],
                                         validate_clusters: false,
                                     },
                                     http_filters: [{
-                                        name: "envoy.router",
+                                        name: 'mixer',
+                                        config: {
+                                            default_destination_service: instance.service.hostname,
+                                            service_configs: {
+                                                [instance.service.hostname]: {
+                                                    disable_check_calls: true,
+                                                    mixer_attributes: {
+                                                        attributes: {
+                                                            'destination.service': { string_value: instance.service.hostname },
+                                                            'destination.uid': { string_value: uid },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                            transport: {
+                                                check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
+                                                report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
+                                            },
+                                        },
+                                    }, {
+                                        name: 'envoy.router',
                                     }],
                                 },
                             }
                         else if !model.is_udp(protocol) then
                             {
-                                name: "envoy.tcp_proxy",
+                                name: 'envoy.tcp_proxy',
                                 config: {
                                     stat_prefix: prefix,
                                     cluster: cluster.name,
@@ -145,14 +165,14 @@ local config = {
 
     outbound_http_routes(services, port, domain)::
         {
-            name: "%d" % [port],
+            name: '%d' % [port],
             virtual_hosts: [
                 {
-                    name: "%s:%d" % [service.hostname, port_desc.port],
+                    name: '%s:%d' % [service.hostname, port_desc.port],
                     cluster:: config.outbound_cluster(service.hostname, {}, port_desc),
                     domains: util.domains(service, port_desc.port, domain),
                     routes: [
-                        config.default_route(self.cluster, "default_route"),
+                        config.default_route(self.cluster, 'default_route'),
                     ],
                 }
                 for service in services
@@ -165,7 +185,7 @@ local config = {
     outbound_listeners(services)::
         [
             {
-                local prefix = "out_%s_%s_%d" % [port.protocol, service.hostname, port.port],
+                local prefix = 'out_%s_%s_%d' % [port.protocol, service.hostname, port.port],
                 local cluster = config.outbound_cluster(service.hostname, {}, port),
                 name: prefix,
                 cluster:: cluster,
@@ -179,7 +199,7 @@ local config = {
                     {
                         filters: [
                             {
-                                name: "envoy.tcp_proxy",
+                                name: 'envoy.tcp_proxy',
                                 config: {
                                     stat_prefix: prefix,
                                     cluster: cluster.name,
@@ -195,11 +215,11 @@ local config = {
             if model.is_tcp(port.protocol)
         ] + [
             {
-                local prefix = "out_HTTP_%d" % [port],
+                local prefix = 'out_HTTP_%d' % [port],
                 name: prefix,
                 address: {
                     socket_address: {
-                        address: "0.0.0.0",
+                        address: '0.0.0.0',
                         port_value: port,
                     },
                 },
@@ -207,21 +227,21 @@ local config = {
                     {
                         filters: [
                             {
-                                name: "envoy.http_connection_manager",
+                                name: 'envoy.http_connection_manager',
                                 config: {
                                     stat_prefix: prefix,
-                                    codec_type: "AUTO",
+                                    codec_type: 'AUTO',
                                     access_log: [{
-                                        name: "envoy.file_access_log",
-                                        config: { path: "/dev/stdout" },
+                                        name: 'envoy.file_access_log',
+                                        config: { path: '/dev/stdout' },
                                     }],
                                     generate_request_id: true,
                                     rds: {
                                         config_source: { ads: {} },
-                                        route_config_name: "%d" % [port],
+                                        route_config_name: '%d' % [port],
                                     },
                                     http_filters: [{
-                                        name: "envoy.router",
+                                        name: 'envoy.router',
                                     }],
                                 },
                             },
@@ -234,10 +254,10 @@ local config = {
 
     virtual_listener(port)::
         {
-            name: "virtual",
+            name: 'virtual',
             address: {
                 socket_address: {
-                    address: "0.0.0.0",
+                    address: '0.0.0.0',
                     port_value: port,
                 },
             },
@@ -245,20 +265,21 @@ local config = {
             filter_chains: [{ filters: [] }],
         },
 
-    sidecar_listeners(instances, services)::
+    sidecar_listeners(uid, instances, services)::
         [
             listener { deprecated_v1+: { bind_to_port: false } }
-            for listener in config.inbound_listeners(instances) + config.outbound_listeners(services)
+            for listener in config.inbound_listeners(uid, instances) + config.outbound_listeners(services)
         ],
 };
 
-function(services=import "testdata/services.json",
-         instances=import "testdata/instances.json",
-         domain="default.svc.cluster.local",
+function(services=import 'testdata/services.json',
+         instances=import 'testdata/instances.json',
+         uid='kubernetes://pod1.ns2',
+         domain='default.svc.cluster.local',
          port=15001)
     {
         listeners: [config.virtual_listener(port)] +
-                   config.sidecar_listeners(instances, services),
+                   config.sidecar_listeners(uid, instances, services),
         routes: [
             config.outbound_http_routes(services, port, domain)
             for port in config.outbound_http_ports(services)

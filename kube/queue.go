@@ -81,7 +81,7 @@ func (q *queueImpl) Run(stop <-chan struct{}) {
 	}()
 
 	// Throttle processing up to smoothed 10 qps with bursts up to 100 qps
-	rateLimiter := flowcontrol.NewTokenBucketRateLimiter(float32(10), 100)
+	rateLimiter := flowcontrol.NewTokenBucketRateLimiter(float32(100), 1000)
 	var item Task
 	for {
 		rateLimiter.Accept()

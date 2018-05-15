@@ -14,6 +14,7 @@ import (
 	"github.com/kyessenov/envoymesh/model"
 )
 
+// Generator produces envoy configs
 type Generator struct {
 	count      int
 	controller *kube.Controller
@@ -52,11 +53,13 @@ func NewKubeGenerator(kubeconfig string) (*Generator, error) {
 	return g, nil
 }
 
+// Run ...
 func (g *Generator) Run(stop <-chan struct{}) {
 	g.controller.Run(stop)
 	<-stop
 }
 
+// ID ...
 func (g *Generator) ID(node *core.Node) string {
 	return node.GetId()
 }
@@ -113,7 +116,7 @@ func (g *Generator) UpdateNode(key string) {
 		glog.Warning(err)
 	}
 
-	updatedEndpoints := compiler.UpdateEndpoints(g.controller)
+	updatedEndpoints := compiler.updateEndpoints(g.controller)
 
 	if updated || updatedEndpoints {
 		g.count++
