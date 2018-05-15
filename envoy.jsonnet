@@ -65,6 +65,7 @@ local config = {
             },
             lb_policy: 'ROUND_ROBIN',
             hostname:: hostname,
+            [if model.is_http2(port_desc.protocol) then 'http2_protocol_options']: {},
         },
 
     default_route(cluster, operation)::
@@ -182,7 +183,7 @@ local config = {
             validate_clusters: false,
         },
 
-    outbound_listeners(services)::
+    outbound_listeners(uid, services)::
         [
             {
                 local prefix = 'out_%s_%s_%d' % [port.protocol, service.hostname, port.port],
@@ -241,6 +242,15 @@ local config = {
                                         route_config_name: '%d' % [port],
                                     },
                                     http_filters: [{
+                                        name: 'mixer',
+                                        config: {
+                                            forward_attributes: {
+                                                attributes: {
+                                                    'source.uid': { string_value: uid },
+                                                },
+                                            },
+                                        },
+                                    }, {
                                         name: 'envoy.router',
                                     }],
                                 },
@@ -268,7 +278,7 @@ local config = {
     sidecar_listeners(uid, instances, services)::
         [
             listener { deprecated_v1+: { bind_to_port: false } }
-            for listener in config.inbound_listeners(uid, instances) + config.outbound_listeners(services)
+            for listener in config.inbound_listeners(uid, instances) + config.outbound_listeners(uid, services)
         ],
 };
 
