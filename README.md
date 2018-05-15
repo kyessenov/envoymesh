@@ -69,7 +69,13 @@ Access the web page by using `EXTERNAL_IP` of `productpage` service:
 
 5. Deploy the mesh:
 
+        # Proxy controller
         kubectl apply -f samples/mesh.yaml
+
+        # Policy and telemetry controller
+        kubectl apply -f samples/mixer.yaml
+
+        # Bookinfo
         kubectl apply -f samples/bookinfo-injected.yaml
 
 Access the web page again at `http://EXTERNAL_IP/productpage`. Traffic should

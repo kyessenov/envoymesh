@@ -14,7 +14,6 @@ docker build -f docker/Dockerfile.sidecar -t ${DOCKER_HUB}/envoysidecar:${DOCKER
 
 echo Building controller
 CGO_ENABLED=0 GOOS=linux go build -o docker/controller-linux github.com/kyessenov/envoymesh/cmd/controller
-cp envoy.jsonnet docker/
 docker build -f docker/Dockerfile.mesh -t ${DOCKER_HUB}/envoymesh:${DOCKER_TAG} docker
 
 echo Pushing images
