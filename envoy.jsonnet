@@ -201,7 +201,7 @@ local config = {
                                     },
                                 },
                                 [if service.hostname == 'ratings.default.svc.cluster.local' then 'envoy.fault']: {
-                                    abort: { http_status: 500, percent: 100 },
+                                    abort: { http_status: 500, percent: 50 },
                                 },
                             },
                         },
