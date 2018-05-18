@@ -199,7 +199,9 @@ local config = {
                                             'destination.service': { string_value: service.hostname },
                                         },
                                     },
-
+                                },
+                                [if service.hostname == 'ratings.default.svc.cluster.local' then 'envoy.fault']: {
+                                    abort: { http_status: 500, percent: 100 },
                                 },
                             },
                         },
@@ -270,29 +272,35 @@ local config = {
                                         config_source: { ads: {} },
                                         route_config_name: '%d' % [port],
                                     },
-                                    http_filters: [{
-                                        name: 'mixer',
-                                        config: {
-                                            mixer_attributes: {
-                                                attributes: {
-                                                    'source.uid': { string_value: uid },
-                                                    'context.reporter.proxy': { string_value: 'client' },
-                                                    'context.reporter.id': { string_value: uid },
+                                    http_filters: [
+                                        {
+                                            name: 'mixer',
+                                            config: {
+                                                mixer_attributes: {
+                                                    attributes: {
+                                                        'source.uid': { string_value: uid },
+                                                        'context.reporter.proxy': { string_value: 'client' },
+                                                        'context.reporter.id': { string_value: uid },
+                                                    },
                                                 },
-                                            },
-                                            forward_attributes: {
-                                                attributes: {
-                                                    'source.uid': { string_value: uid },
+                                                forward_attributes: {
+                                                    attributes: {
+                                                        'source.uid': { string_value: uid },
+                                                    },
                                                 },
-                                            },
-                                            transport: {
-                                                check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
-                                                report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
+                                                transport: {
+                                                    check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
+                                                    report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
+                                                },
                                             },
                                         },
-                                    }, {
-                                        name: 'envoy.router',
-                                    }],
+                                        {
+                                            name: 'envoy.fault',
+                                        },
+                                        {
+                                            name: 'envoy.router',
+                                        },
+                                    ],
                                 },
                             },
                         ],
