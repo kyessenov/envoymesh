@@ -127,8 +127,10 @@ local config = {
                                                     disable_check_calls: true,
                                                     mixer_attributes: {
                                                         attributes: {
-                                                            'destination.service': { string_value: instance.service.hostname },
+                                                            'destination.service': { string_value: 'ingress' },  // Access from outside the mesh
                                                             'destination.uid': { string_value: uid },
+                                                            'context.reporter.proxy': { string_value: 'server' },
+                                                            'context.reporter.id': { string_value: uid },
                                                         },
                                                     },
                                                 },
@@ -169,11 +171,38 @@ local config = {
             name: '%d' % [port],
             virtual_hosts: [
                 {
+                    local cluster = config.outbound_cluster(service.hostname, {}, port_desc),
                     name: '%s:%d' % [service.hostname, port_desc.port],
-                    cluster:: config.outbound_cluster(service.hostname, {}, port_desc),
+                    cluster:: cluster,
                     domains: util.domains(service, port_desc.port, domain),
                     routes: [
-                        config.default_route(self.cluster, 'default_route'),
+                        {
+                            match: {
+                                prefix: '/',
+                            },
+                            route: {
+                                cluster: cluster.name,
+                            },
+                            decorator: {
+                                operation: 'default_route',
+                            },
+                            per_filter_config: {
+                                mixer: {
+                                    disable_check_calls: true,
+                                    mixer_attributes: {
+                                        attributes: {
+                                            'destination.service': { string_value: service.hostname },
+                                        },
+                                    },
+                                    forward_attributes: {
+                                        attributes: {
+                                            'destination.service': { string_value: service.hostname },
+                                        },
+                                    },
+
+                                },
+                            },
+                        },
                     ],
                 }
                 for service in services
@@ -244,10 +273,21 @@ local config = {
                                     http_filters: [{
                                         name: 'mixer',
                                         config: {
+                                            mixer_attributes: {
+                                                attributes: {
+                                                    'source.uid': { string_value: uid },
+                                                    'context.reporter.proxy': { string_value: 'client' },
+                                                    'context.reporter.id': { string_value: uid },
+                                                },
+                                            },
                                             forward_attributes: {
                                                 attributes: {
                                                     'source.uid': { string_value: uid },
                                                 },
+                                            },
+                                            transport: {
+                                                check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
+                                                report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
                                             },
                                         },
                                     }, {

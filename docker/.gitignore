@@ -1,3 +1,4 @@
 /bootstrap.jsonnet
 /controller-linux
 /agent-linux
+/envoy
