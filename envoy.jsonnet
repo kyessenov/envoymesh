@@ -19,7 +19,7 @@ local util = {
 
     toBytes(ip)::
         local parts = std.split(ip, '.');
-        [std.parseInt(parts[0]), std.parseInt(parts[1]), std.parseInt(parts[2]), std.parseInt(parts[3])],
+        std.base64([std.parseInt(parts[0]), std.parseInt(parts[1]), std.parseInt(parts[2]), std.parseInt(parts[3])]),
 
 };
 
@@ -131,7 +131,7 @@ local config = {
                                                     disable_check_calls: true,
                                                     mixer_attributes: {
                                                         attributes: {
-                                                            'destination.ip': { bytes_value: util.toBytes(endpoint.ip) },
+                                                            'destination.ip': { bytes_value: util.toBytes(endpoint.ip) },  // Set correct destination.ip for server reporting
                                                             'destination.port': { int64_value: endpoint.port },
                                                             'destination.service': { string_value: 'ingress' },  // Allow access from outside the mesh
                                                             'destination.uid': { string_value: instance.uid },
