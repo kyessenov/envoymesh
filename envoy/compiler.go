@@ -31,10 +31,10 @@ type Compiler struct {
 	script string
 
 	// inputs
-	uid       string
-	domain    string
-	services  []*model.Service
-	instances []model.ServiceInstance
+	uid      string
+	domain   string
+	services []*model.Service
+	instance model.Instance
 
 	// outputs
 	listeners []cache.Resource
@@ -63,28 +63,27 @@ func NewCompiler(name, namespace, suffix string) (*Compiler, error) {
 }
 
 // Update re-compiles if necessary and returns true only then
-func (g *Compiler) Update(services []*model.Service, instances []model.ServiceInstance) (bool, error) {
-	if reflect.DeepEqual(services, g.services) && reflect.DeepEqual(instances, g.instances) {
+func (g *Compiler) Update(services []*model.Service, instance model.Instance) (bool, error) {
+	if reflect.DeepEqual(services, g.services) && reflect.DeepEqual(instance, g.instance) {
 		return false, nil
 	}
 
 	g.count++
 	g.services = services
-	g.instances = instances
+	g.instance = instance
 
 	servicesJSON, err := json.Marshal(g.services)
 	if err != nil {
 		return false, err
 	}
-	instancesJSON, err := json.Marshal(g.instances)
+	instanceJSON, err := json.Marshal(g.instance)
 	if err != nil {
 		return false, err
 	}
 
 	glog.Infof("generating snapshot %d for %s", g.count, g.uid)
 	g.vm.TLACode("services", string(servicesJSON))
-	g.vm.TLACode("instances", string(instancesJSON))
-	g.vm.TLAVar("uid", g.uid)
+	g.vm.TLACode("instance", string(instanceJSON))
 	g.vm.TLAVar("domain", g.domain)
 	in, err := g.vm.EvaluateSnippet("envoy.jsonnet", g.script)
 	if err != nil {
@@ -148,8 +147,8 @@ func (g *Compiler) updateEndpoints(controller model.ServiceDiscovery) bool {
 						Address: &core.Address{
 							Address: &core.Address_SocketAddress{
 								SocketAddress: &core.SocketAddress{
-									Address:       instance.Endpoint.Address,
-									PortSpecifier: &core.SocketAddress_PortValue{PortValue: uint32(instance.Endpoint.Port)},
+									Address:       instance.IP,
+									PortSpecifier: &core.SocketAddress_PortValue{PortValue: uint32(instance.Port)},
 								},
 							},
 						},

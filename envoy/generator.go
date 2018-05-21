@@ -17,7 +17,7 @@ import (
 // Generator produces envoy configs
 type Generator struct {
 	count      int
-	controller *kube.Controller
+	controller model.Controller
 	cache      cache.SnapshotCache
 	services   []*model.Service
 
@@ -45,7 +45,7 @@ func NewKubeGenerator(kubeconfig string) (*Generator, error) {
 	g.controller.RegisterServiceHandler(g.UpdateServices)
 
 	// callback: endpoint modification
-	g.controller.RegisterInstanceHandler(g.UpdateInstances)
+	g.controller.RegisterEndpointHandler(g.UpdateInstances)
 
 	// callback: registering a new node group (on a different loop)
 	g.cache = cache.NewSnapshotCache(true, g, g)
@@ -99,19 +99,16 @@ func (g *Generator) OnFetchResponse(req *v2.DiscoveryRequest, resp *v2.Discovery
 
 func (g *Generator) UpdateNode(key string) {
 	compiler := g.nodes[key]
-	instances, err := g.controller.WorkloadInstances(string(key))
+	instance, err := g.controller.Workload(string(key))
 	if err != nil {
 		glog.Warning(err)
 	}
-	if instances == nil {
-		instances = []model.ServiceInstance{}
-	}
-	sort.Slice(instances, func(i, j int) bool {
-		return instances[i].Service.Hostname < instances[j].Service.Hostname ||
-			(instances[i].Service.Hostname == instances[j].Service.Hostname && instances[i].Endpoint.Port < instances[j].Endpoint.Port)
+	sort.Slice(instance.Endpoints, func(i, j int) bool {
+		return instance.Endpoints[i].IP < instance.Endpoints[j].IP ||
+			(instance.Endpoints[i].IP == instance.Endpoints[j].IP && instance.Endpoints[i].Port < instance.Endpoints[j].Port)
 	})
 
-	updated, err := compiler.Update(g.services, instances)
+	updated, err := compiler.Update(g.services, instance)
 	if err != nil {
 		glog.Warning(err)
 	}
@@ -145,7 +142,7 @@ func (g *Generator) UpdateServices(*model.Service, model.Event) {
 	g.Update()
 }
 
-func (g *Generator) UpdateInstances(*model.ServiceInstance, model.Event) {
+func (g *Generator) UpdateInstances() {
 	g.Update()
 }
 

@@ -29,15 +29,19 @@ package model
 // Handlers receive the notification event and the associated object.  Note
 // that all handlers must be appended before starting the controller.
 type Controller interface {
-	// RegisterServiceHandler notifies about changes to the service catalog.
-	RegisterServiceHandler(f func(*Service, Event)) error
+	ServiceDiscovery
 
-	// RegisterInstanceHandler notifies about changes to the service instances
-	// for a service.
-	RegisterInstanceHandler(f func(*ServiceInstance, Event)) error
+	// RegisterServiceHandler notifies about changes to the service catalog.
+	RegisterServiceHandler(f func(*Service, Event))
+
+	// RegisterEndpointHandler notifies about changes to the service catalog.
+	RegisterEndpointHandler(f func())
 
 	// Run until a signal is received
 	Run(stop <-chan struct{})
+
+	// QueueSchedule on the worker thread
+	QueueSchedule(job func())
 }
 
 // Event represents a registry update event

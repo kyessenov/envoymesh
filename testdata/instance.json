@@ -1,0 +1,11 @@
+{
+    "endpoints": [{
+        "ip": "10.1.1.0",
+        "port": 80,
+        "protocol": "HTTP"
+    }],
+    "labels": {
+        "version": "v0"
+    },
+    "uid": "kubernetes://pod1.ns2"
+}

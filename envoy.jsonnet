@@ -17,6 +17,10 @@ local util = {
         ] + if 'address' in service then [service.address] else [];
         expansions + ['%s:%d' % [host, port] for host in expansions],
 
+    toBytes(ip)::
+        local parts = std.split(ip, '.');
+        [std.parseInt(parts[0]), std.parseInt(parts[1]), std.parseInt(parts[2]), std.parseInt(parts[3])],
+
 };
 
 local model = {
@@ -81,18 +85,18 @@ local config = {
             },
         },
 
-    inbound_listeners(uid, instances)::
+    inbound_listeners(instance)::
         [{
-            local protocol = instance.endpoint.service_port.protocol,
-            local port = instance.endpoint.port,
+            local protocol = endpoint.protocol,
+            local port = endpoint.port,
             local cluster = config.inbound_cluster(port, protocol),
             local prefix = 'in_%s_%d' % [protocol, port],
-            name: 'in_%s_%s_%d' % [protocol, instance.endpoint.ip_address, port],
+            name: 'in_%s_%s_%d' % [protocol, endpoint.ip, endpoint.port],
             cluster:: cluster,
             address: {
                 socket_address: {
-                    address: instance.endpoint.ip_address,
-                    port_value: port,
+                    address: endpoint.ip,
+                    port_value: endpoint.port,
                 },
             },
             filter_chains: [
@@ -121,16 +125,18 @@ local config = {
                                     http_filters: [{
                                         name: 'mixer',
                                         config: {
-                                            default_destination_service: instance.service.hostname,
+                                            default_destination_service: 'ingress',
                                             service_configs: {
-                                                [instance.service.hostname]: {
+                                                ingress: {
                                                     disable_check_calls: true,
                                                     mixer_attributes: {
                                                         attributes: {
-                                                            'destination.service': { string_value: 'ingress' },  // Access from outside the mesh
-                                                            'destination.uid': { string_value: uid },
+                                                            'destination.ip': { bytes_value: util.toBytes(endpoint.ip) },
+                                                            'destination.port': { int64_value: endpoint.port },
+                                                            'destination.service': { string_value: 'ingress' },  // Allow access from outside the mesh
+                                                            'destination.uid': { string_value: instance.uid },
                                                             'context.reporter.proxy': { string_value: 'server' },
-                                                            'context.reporter.id': { string_value: uid },
+                                                            'context.reporter.id': { string_value: instance.uid },
                                                         },
                                                     },
                                                 },
@@ -145,7 +151,7 @@ local config = {
                                     }],
                                 },
                             }
-                        else if !model.is_udp(protocol) then
+                        else if model.is_tcp(protocol) then
                             {
                                 name: 'envoy.tcp_proxy',
                                 config: {
@@ -156,7 +162,7 @@ local config = {
                     ],
                 },
             ],
-        } for instance in instances],
+        } for endpoint in instance.endpoints],
 
     outbound_http_ports(services)::
         std.set([
@@ -323,21 +329,20 @@ local config = {
             filter_chains: [{ filters: [] }],
         },
 
-    sidecar_listeners(uid, instances, services)::
+    sidecar_listeners(instance, services)::
         [
             listener { deprecated_v1+: { bind_to_port: false } }
-            for listener in config.inbound_listeners(uid, instances) + config.outbound_listeners(uid, services)
+            for listener in config.inbound_listeners(instance) + config.outbound_listeners(instance.uid, services)
         ],
 };
 
 function(services=import 'testdata/services.json',
-         instances=import 'testdata/instances.json',
-         uid='kubernetes://pod1.ns2',
+         instance=import 'testdata/instance.json',
          domain='default.svc.cluster.local',
          port=15001)
     {
         listeners: [config.virtual_listener(port)] +
-                   config.sidecar_listeners(uid, instances, services),
+                   config.sidecar_listeners(instance, services),
         routes: [
             config.outbound_http_routes(services, port, domain)
             for port in config.outbound_http_ports(services)

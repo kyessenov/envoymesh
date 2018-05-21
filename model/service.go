@@ -124,38 +124,6 @@ func (p Protocol) IsHTTP() bool {
 	}
 }
 
-// NetworkEndpoint defines a network address (IP:port) associated with an instance of the
-// service. A service has one or more instances each running in a
-// container/VM/pod. If a service has multiple ports, then the same
-// instance IP is expected to be listening on multiple ports (one per each
-// service port). Note that the port associated with an instance does not
-// have to be the same as the port associated with the service. Depending
-// on the network setup (NAT, overlays), this could vary.
-//
-// For e.g., if catalog.mystore.com is accessible through port 80 and 8080,
-// and it maps to an instance with IP 172.16.0.1, such that connections to
-// port 80 are forwarded to port 55446, and connections to port 8080 are
-// forwarded to port 33333,
-//
-// then internally, we have two two endpoint structs for the
-// service catalog.mystore.com
-//  --> 172.16.0.1:54546 (with ServicePort pointing to 80) and
-//  --> 172.16.0.1:33333 (with ServicePort pointing to 8080)
-type NetworkEndpoint struct {
-	// Address of the network endpoint, typically an IPv4 address
-	Address string `json:"ip_address,omitempty"`
-
-	// Port number where this instance is listening for connections This
-	// need not be the same as the port where the service is accessed.
-	// e.g., catalog.mystore.com:8080 -> 172.16.0.1:55446
-	Port int `json:"port"`
-
-	// Port declaration from the service declaration This is the port for
-	// the service associated with this instance (e.g.,
-	// catalog.mystore.com)
-	ServicePort *Port `json:"service_port"`
-}
-
 // Labels is a non empty set of arbitrary strings. Each version of a service can
 // be differentiated by a unique set of labels associated with the version. These
 // labels are assigned to all instances of a particular service version. For
@@ -168,26 +136,18 @@ type Labels map[string]string
 // collection of labels
 type LabelsCollection []Labels
 
-// ServiceInstance represents an individual instance of a specific version
-// of a service. It binds a network endpoint (ip:port), the service
-// description (which is oblivious to various versions) and a set of labels
-// that describe the service version associated with this instance.
-//
-// The labels associated with a service instance are unique per a network endpoint.
-// There is one well defined set of labels for each service instance network endpoint.
-//
-// For example, the set of service instances associated with catalog.mystore.com
-// are modeled like this
-//      --> NetworkEndpoint(172.16.0.1:8888), Service(catalog.myservice.com), Labels(foo=bar)
-//      --> NetworkEndpoint(172.16.0.2:8888), Service(catalog.myservice.com), Labels(foo=bar)
-//      --> NetworkEndpoint(172.16.0.3:8888), Service(catalog.myservice.com), Labels(kitty=cat)
-//      --> NetworkEndpoint(172.16.0.4:8888), Service(catalog.myservice.com), Labels(kitty=cat)
-type ServiceInstance struct {
-	Endpoint         NetworkEndpoint `json:"endpoint,omitempty"`
-	Service          *Service        `json:"service,omitempty"`
-	Labels           Labels          `json:"labels,omitempty"`
-	AvailabilityZone string          `json:"az,omitempty"`
-	ServiceAccount   string          `json:"serviceaccount,omitempty"`
+// Endpoint is a network listener descriptor
+type Endpoint struct {
+	IP       string   `json:"ip"`
+	Port     int      `json:"port"`
+	Protocol Protocol `json:"protocol"`
+}
+
+// Instance is a workload descriptor
+type Instance struct {
+	Endpoints []Endpoint `json:"endpoints"`
+	Labels    Labels     `json:"labels"`
+	UID       string     `json:"uid"`
 }
 
 // ServiceDiscovery enumerates Istio service instances.
@@ -198,35 +158,11 @@ type ServiceDiscovery interface {
 	// GetService retrieves a service by host name if it exists
 	GetService(hostname string) (*Service, error)
 
-	// Instances retrieves instances for a service and its ports that match
-	// any of the supplied labels. All instances match an empty tag list.
-	//
-	// For example, consider the example of catalog.mystore.com as described in NetworkEndpoints
-	// Instances(catalog.myservice.com, 80) ->
-	//      --> NetworkEndpoint(172.16.0.1:8888), Service(catalog.myservice.com), Labels(foo=bar)
-	//      --> NetworkEndpoint(172.16.0.2:8888), Service(catalog.myservice.com), Labels(foo=bar)
-	//      --> NetworkEndpoint(172.16.0.3:8888), Service(catalog.myservice.com), Labels(kitty=cat)
-	//      --> NetworkEndpoint(172.16.0.4:8888), Service(catalog.myservice.com), Labels(kitty=cat)
-	//
-	// Calling Instances with specific labels returns a trimmed list.
-	// e.g., Instances(catalog.myservice.com, 80, foo=bar) ->
-	//      --> NetworkEndpoint(172.16.0.1:8888), Service(catalog.myservice.com), Labels(foo=bar)
-	//      --> NetworkEndpoint(172.16.0.2:8888), Service(catalog.myservice.com), Labels(foo=bar)
-	//
-	// Similar concepts apply for calling this function with a specific
-	// port, hostname and labels.
-	Instances(hostname string, ports []string, labels LabelsCollection) ([]*ServiceInstance, error)
+	// Instances ...
+	Instances(hostname string, ports []string, labelsList LabelsCollection) ([]Endpoint, error)
 
-	// HostInstances lists service instances for a given set of IPv4 addresses.
-	HostInstances(addrs map[string]bool) ([]*ServiceInstance, error)
-
-	// ManagementPorts lists set of management ports associated with an IPv4 address.
-	// These management ports are typically used by the platform for out of band management
-	// tasks such as health checks, etc. In a scenario where the proxy functions in the
-	// transparent mode (traps all traffic to and from the service instance IP address),
-	// the configuration generated for the proxy will not manipulate traffic destined for
-	// the management ports
-	ManagementPorts(addr string) PortList
+	// Workload ...
+	Workload(id string) (Instance, error)
 }
 
 // ServiceAccounts exposes Istio service accounts
