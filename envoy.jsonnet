@@ -72,19 +72,6 @@ local config = {
             [if model.is_http2(port_desc.protocol) then 'http2_protocol_options']: {},
         },
 
-    default_route(cluster, operation)::
-        {
-            match: {
-                prefix: '/',
-            },
-            route: {
-                cluster: cluster.name,
-            },
-            decorator: {
-                operation: operation,
-            },
-        },
-
     inbound_listeners(instance)::
         [{
             local protocol = endpoint.protocol,
@@ -118,7 +105,19 @@ local config = {
                                         virtual_hosts: [{
                                             name: prefix,
                                             domains: ['*'],
-                                            routes: [config.default_route(cluster, 'inbound_route')],
+                                            routes: [
+                                                {
+                                                    match: {
+                                                        prefix: '/',
+                                                    },
+                                                    route: {
+                                                        cluster: cluster.name,
+                                                    },
+                                                    decorator: {
+                                                        operation: 'inbound_route',
+                                                    },
+                                                },
+                                            ],
                                         }],
                                         validate_clusters: false,
                                     },
