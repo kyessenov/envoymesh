@@ -202,12 +202,16 @@ func (c *Controller) Instances() map[string][]model.Endpoint {
 		for _, ss := range ep.Subsets {
 			for _, ea := range ss.Addresses {
 				for _, port := range ss.Ports {
-					key := svc + ":" + port.Name
-					out[key] = append(out[key], model.Endpoint{
+					endpoint := model.Endpoint{
 						IP:   ea.IP,
 						Port: int(port.Port),
-					})
-
+					}
+					pod, exists := c.pods.getPodByIP(ea.IP)
+					if exists {
+						endpoint.UID = pod.Namespace + "/" + pod.Name
+					}
+					key := svc + ":" + port.Name
+					out[key] = append(out[key], endpoint)
 				}
 			}
 		}

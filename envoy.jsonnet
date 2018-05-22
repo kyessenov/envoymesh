@@ -369,7 +369,7 @@ function(services=import 'testdata/services.json',
                                 },
                             },
                         },
-                        metadata: {},
+                        [if 'uid' in endpoint then 'metadata']: { filter_metadata: { mixer: { 'destination.uid': endpoint.uid } } },
                     } for endpoint in instances[service_name]],
                 }] else [],
             }

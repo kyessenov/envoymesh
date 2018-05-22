@@ -141,6 +141,9 @@ type Endpoint struct {
 	IP       string   `json:"ip"`
 	Port     int      `json:"port"`
 	Protocol Protocol `json:"protocol"`
+
+	// Used by EDS
+	UID string
 }
 
 // Instance is a workload descriptor
@@ -236,89 +239,6 @@ func (ports PortList) GetByPort(num int) (*Port, bool) {
 // External predicate checks whether the service is external
 func (s *Service) External() bool {
 	return s.ExternalName != ""
-}
-
-// Key generates a unique string referencing service instances for a given port and labels.
-// The separator character must be exclusive to the regular expressions allowed in the
-// service declaration.
-func (s *Service) Key(port *Port, tag Labels) string {
-	// TODO: check port is non nil and membership of port in service
-	return ServiceKey(s.Hostname, PortList{port}, LabelsCollection{tag})
-}
-
-// ServiceKey generates a service key for a collection of ports and labels
-func ServiceKey(hostname string, servicePorts PortList, labelsList LabelsCollection) string {
-	// example: name.namespace|http|env=prod;env=test,version=my-v1
-	var buffer bytes.Buffer
-	buffer.WriteString(hostname)
-	np := len(servicePorts)
-	nt := len(labelsList)
-
-	if nt == 1 && labelsList[0] == nil {
-		nt = 0
-	}
-
-	if np == 0 && nt == 0 {
-		return buffer.String()
-	} else if np == 1 && nt == 0 && servicePorts[0].Name == "" {
-		return buffer.String()
-	} else {
-		buffer.WriteString("|")
-	}
-
-	if np > 0 {
-		ports := make([]string, np)
-		for i := 0; i < np; i++ {
-			ports[i] = servicePorts[i].Name
-		}
-		sort.Strings(ports)
-		for i := 0; i < np; i++ {
-			if i > 0 {
-				buffer.WriteString(",")
-			}
-			buffer.WriteString(ports[i])
-		}
-	}
-
-	if nt > 0 {
-		buffer.WriteString("|")
-		labels := make([]string, nt)
-		for i := 0; i < nt; i++ {
-			labels[i] = labelsList[i].String()
-		}
-		sort.Strings(labels)
-		for i := 0; i < nt; i++ {
-			if i > 0 {
-				buffer.WriteString(";")
-			}
-			buffer.WriteString(labels[i])
-		}
-	}
-	return buffer.String()
-}
-
-// ParseServiceKey is the inverse of the Service.String() method
-func ParseServiceKey(s string) (hostname string, ports PortList, labels LabelsCollection) {
-	parts := strings.Split(s, "|")
-	hostname = parts[0]
-
-	var names []string
-	if len(parts) > 1 {
-		names = strings.Split(parts[1], ",")
-	} else {
-		names = []string{""}
-	}
-
-	for _, name := range names {
-		ports = append(ports, &Port{Name: name})
-	}
-
-	if len(parts) > 2 && len(parts[2]) > 0 {
-		for _, tag := range strings.Split(parts[2], ";") {
-			labels = append(labels, ParseLabelsString(tag))
-		}
-	}
-	return
 }
 
 func (t Labels) String() string {
