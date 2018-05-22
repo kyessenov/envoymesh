@@ -20,6 +20,7 @@ type Generator struct {
 	controller model.Controller
 	cache      cache.SnapshotCache
 	services   []*model.Service
+	instances  map[string][]model.Endpoint
 
 	nodes map[string]*Compiler
 }
@@ -63,10 +64,17 @@ func (g *Generator) Run(stop <-chan struct{}) {
 func (g *Generator) ID(node *core.Node) string {
 	return node.GetId()
 }
-func (g *Generator) Infof(format string, args ...interface{})  { glog.Infof(format, args...) }
-func (g *Generator) Errorf(format string, args ...interface{}) { glog.Errorf(format, args...) }
-func (g *Generator) Cache() cache.Cache                        { return g.cache }
 
+// Infof ...
+func (g *Generator) Infof(format string, args ...interface{}) { glog.Infof(format, args...) }
+
+// Errorf ...
+func (g *Generator) Errorf(format string, args ...interface{}) { glog.Errorf(format, args...) }
+
+// Cache ...
+func (g *Generator) Cache() cache.Cache { return g.cache }
+
+// OnStreamRequest ...
 func (g *Generator) OnStreamRequest(id int64, req *v2.DiscoveryRequest) {
 	// move the task to single threaded queue
 	g.controller.QueueSchedule(func() {
@@ -91,12 +99,23 @@ func (g *Generator) OnStreamRequest(id int64, req *v2.DiscoveryRequest) {
 		}
 	})
 }
-func (g *Generator) OnStreamOpen(int64, string)                                           {}
-func (g *Generator) OnStreamClosed(int64)                                                 {}
-func (g *Generator) OnStreamResponse(int64, *v2.DiscoveryRequest, *v2.DiscoveryResponse)  {}
-func (g *Generator) OnFetchRequest(req *v2.DiscoveryRequest)                              {}
+
+// OnStreamOpen ...
+func (g *Generator) OnStreamOpen(int64, string) {}
+
+// OnStreamClosed ...
+func (g *Generator) OnStreamClosed(int64) {}
+
+// OnStreamResponse ...
+func (g *Generator) OnStreamResponse(int64, *v2.DiscoveryRequest, *v2.DiscoveryResponse) {}
+
+// OnFetchRequest ...
+func (g *Generator) OnFetchRequest(req *v2.DiscoveryRequest) {}
+
+// OnFetchResponse ...
 func (g *Generator) OnFetchResponse(req *v2.DiscoveryRequest, resp *v2.DiscoveryResponse) {}
 
+// UpdateNode ...
 func (g *Generator) UpdateNode(key string) {
 	compiler := g.nodes[key]
 	instance, err := g.controller.Workload(string(key))
@@ -108,44 +127,42 @@ func (g *Generator) UpdateNode(key string) {
 			(instance.Endpoints[i].IP == instance.Endpoints[j].IP && instance.Endpoints[i].Port < instance.Endpoints[j].Port)
 	})
 
-	updated, err := compiler.Update(g.services, instance)
+	updated, err := compiler.Update(g.services, instance, g.instances)
 	if err != nil {
 		glog.Warning(err)
 	}
 
-	updatedEndpoints := compiler.updateEndpoints(g.controller)
-
-	if updated || updatedEndpoints {
+	if updated {
 		g.count++
-		glog.Infof("update node %v (updated=%t, updatedEndpoints=%t, count=%d)", key, updated, updatedEndpoints, g.count)
+		glog.Infof("update node %v (updated=%t, count=%d)", key, updated, g.count)
 		g.cache.SetSnapshot(key, compiler.Snapshot(g.count))
 	}
 }
 
-func (g *Generator) UpdateServices(*model.Service, model.Event) {
+// UpdateServices ...
+func (g *Generator) UpdateServices() {
 	// reload services
-	services, err := g.controller.Services()
-	if err != nil {
-		glog.Warning(err)
-	}
-	if services == nil {
-		services = []*model.Service{}
-	}
-	sort.Slice(services, func(i, j int) bool { return services[i].Hostname < services[j].Hostname })
-
+	services := g.controller.Services()
 	if reflect.DeepEqual(services, g.services) {
 		return
 	}
-
 	glog.Infof("update services (services=%d)", len(services))
 	g.services = services
 	g.Update()
 }
 
+// UpdateInstances ...
 func (g *Generator) UpdateInstances() {
+	instances := g.controller.Instances()
+	if reflect.DeepEqual(instances, g.instances) {
+		return
+	}
+	glog.Infof("update instances (instances=%d)", len(instances))
+	g.instances = instances
 	g.Update()
 }
 
+// Update ...
 func (g *Generator) Update() {
 	for key := range g.nodes {
 		g.UpdateNode(key)

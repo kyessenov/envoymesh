@@ -16,7 +16,9 @@ package kube
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/golang/glog"
@@ -177,7 +179,7 @@ func (c *Controller) QueueSchedule(job func()) {
 }
 
 // Services implements a service catalog operation
-func (c *Controller) Services() ([]*model.Service, error) {
+func (c *Controller) Services() []*model.Service {
 	list := c.services.informer.GetStore().List()
 	out := make([]*model.Service, 0, len(list))
 
@@ -186,23 +188,36 @@ func (c *Controller) Services() ([]*model.Service, error) {
 			out = append(out, svc)
 		}
 	}
-	return out, nil
+	sort.Slice(out, func(i, j int) bool { return out[i].Hostname < out[j].Hostname })
+
+	return out
 }
 
-// GetService implements a service catalog operation
-func (c *Controller) GetService(hostname string) (*model.Service, error) {
-	name, namespace, err := parseHostname(hostname)
-	if err != nil {
-		glog.V(2).Infof("GetService(%s) => error %v", hostname, err)
-		return nil, err
-	}
-	item, exists := c.serviceByKey(name, namespace)
-	if !exists {
-		return nil, nil
-	}
+// Instances ...
+func (c *Controller) Instances() map[string][]model.Endpoint {
+	out := make(map[string][]model.Endpoint)
+	for _, item := range c.endpoints.informer.GetStore().List() {
+		ep := *item.(*v1.Endpoints)
+		svc := fmt.Sprintf("%s.%s.svc.%s", ep.Name, ep.Namespace, c.domainSuffix)
+		for _, ss := range ep.Subsets {
+			for _, ea := range ss.Addresses {
+				for _, port := range ss.Ports {
+					key := svc + ":" + port.Name
+					out[key] = append(out[key], model.Endpoint{
+						IP:   ea.IP,
+						Port: int(port.Port),
+					})
 
-	svc := convertService(*item, c.domainSuffix)
-	return svc, nil
+				}
+			}
+		}
+	}
+	for _, val := range out {
+		sort.Slice(val, func(i, j int) bool {
+			return val[i].IP < val[j].IP || val[i].IP == val[j].IP && val[i].Port < val[j].Port
+		})
+	}
+	return out
 }
 
 // serviceByKey retrieves a service by name and namespace
@@ -216,63 +231,6 @@ func (c *Controller) serviceByKey(name, namespace string) (*v1.Service, bool) {
 		return nil, false
 	}
 	return item.(*v1.Service), true
-}
-
-// Instances implements a service catalog operation
-func (c *Controller) Instances(hostname string, ports []string, labelsList model.LabelsCollection) ([]model.Endpoint, error) {
-	// Get actual service by name
-	name, namespace, err := parseHostname(hostname)
-	if err != nil {
-		glog.V(2).Infof("parseHostname(%s) => error %v", hostname, err)
-		return nil, err
-	}
-
-	item, exists := c.serviceByKey(name, namespace)
-	if !exists {
-		return nil, nil
-	}
-
-	// Locate all ports in the actual service
-	svc := convertService(*item, c.domainSuffix)
-	if svc == nil {
-		return nil, nil
-	}
-	svcPorts := make(map[string]*model.Port)
-	for _, port := range ports {
-		if svcPort, exists := svc.Ports.Get(port); exists {
-			svcPorts[port] = svcPort
-		}
-	}
-
-	// TODO: single port service missing name
-	for _, item := range c.endpoints.informer.GetStore().List() {
-		ep := *item.(*v1.Endpoints)
-		if ep.Name == name && ep.Namespace == namespace {
-			var out []model.Endpoint
-			for _, ss := range ep.Subsets {
-				for _, ea := range ss.Addresses {
-					labels, _ := c.pods.labelsByIP(ea.IP)
-					// check that one of the input labels is a subset of the labels
-					if !labelsList.HasSubsetOf(labels) {
-						continue
-					}
-
-					// identify the port by name
-					for _, port := range ss.Ports {
-						if _, exists := svcPorts[port.Name]; exists {
-							out = append(out, model.Endpoint{
-								IP:   ea.IP,
-								Port: int(port.Port),
-							})
-
-						}
-					}
-				}
-			}
-			return out, nil
-		}
-	}
-	return nil, nil
 }
 
 // Workload returns the workload descriptor
@@ -325,7 +283,7 @@ func (c *Controller) Workload(id string) (model.Instance, error) {
 }
 
 // RegisterServiceHandler ...
-func (c *Controller) RegisterServiceHandler(f func(*model.Service, model.Event)) {
+func (c *Controller) RegisterServiceHandler(f func()) {
 	c.services.handler.Append(func(obj interface{}, event model.Event) error {
 		svc := *obj.(*v1.Service)
 
@@ -333,19 +291,14 @@ func (c *Controller) RegisterServiceHandler(f func(*model.Service, model.Event))
 		if svc.Namespace == meta_v1.NamespaceSystem {
 			return nil
 		}
-
-		glog.V(2).Infof("Handle service %s in namespace %s", svc.Name, svc.Namespace)
-
-		if svcConv := convertService(svc, c.domainSuffix); svcConv != nil {
-			f(svcConv, event)
-		}
+		f()
 		return nil
 	})
 }
 
 // RegisterEndpointHandler ...
 func (c *Controller) RegisterEndpointHandler(f func()) {
-	c.endpoints.handler.Append(func(interface{}, model.Event) error {
+	c.endpoints.handler.Append(func(obj interface{}, event model.Event) error {
 		f()
 		return nil
 	})

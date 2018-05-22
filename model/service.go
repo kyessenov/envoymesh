@@ -153,13 +153,10 @@ type Instance struct {
 // ServiceDiscovery enumerates Istio service instances.
 type ServiceDiscovery interface {
 	// Services list declarations of all services in the system
-	Services() ([]*Service, error)
-
-	// GetService retrieves a service by host name if it exists
-	GetService(hostname string) (*Service, error)
+	Services() []*Service
 
 	// Instances ...
-	Instances(hostname string, ports []string, labelsList LabelsCollection) ([]Endpoint, error)
+	Instances() map[string][]Endpoint
 
 	// Workload ...
 	Workload(id string) (Instance, error)

@@ -7,8 +7,6 @@ import (
 	"reflect"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	"github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/golang/glog"
@@ -20,6 +18,7 @@ type output struct {
 	Listeners []interface{} `json:"listeners"`
 	Routes    []interface{} `json:"routes"`
 	Clusters  []interface{} `json:"clusters"`
+	Endpoints []interface{} `json:"endpoints"`
 }
 
 // Compiler represents a repeatedly executed compilation job
@@ -31,10 +30,11 @@ type Compiler struct {
 	script string
 
 	// inputs
-	uid      string
-	domain   string
-	services []*model.Service
-	instance model.Instance
+	uid       string
+	domain    string
+	services  []*model.Service
+	instance  model.Instance
+	instances map[string][]model.Endpoint
 
 	// outputs
 	listeners []cache.Resource
@@ -59,18 +59,20 @@ func NewCompiler(name, namespace, suffix string) (*Compiler, error) {
 		listeners: make([]cache.Resource, 0),
 		routes:    make([]cache.Resource, 0),
 		clusters:  make([]cache.Resource, 0),
+		endpoints: make([]cache.Resource, 0),
 	}, nil
 }
 
 // Update re-compiles if necessary and returns true only then
-func (g *Compiler) Update(services []*model.Service, instance model.Instance) (bool, error) {
-	if reflect.DeepEqual(services, g.services) && reflect.DeepEqual(instance, g.instance) {
+func (g *Compiler) Update(services []*model.Service, instance model.Instance, instances map[string][]model.Endpoint) (bool, error) {
+	if reflect.DeepEqual(services, g.services) && reflect.DeepEqual(instance, g.instance) && reflect.DeepEqual(instances, g.instances) {
 		return false, nil
 	}
 
 	g.count++
 	g.services = services
 	g.instance = instance
+	g.instances = instances
 
 	servicesJSON, err := json.Marshal(g.services)
 	if err != nil {
@@ -80,10 +82,15 @@ func (g *Compiler) Update(services []*model.Service, instance model.Instance) (b
 	if err != nil {
 		return false, err
 	}
+	instancesJSON, err := json.Marshal(g.instances)
+	if err != nil {
+		return false, err
+	}
 
 	glog.Infof("generating snapshot %d for %s", g.count, g.uid)
 	g.vm.TLACode("services", string(servicesJSON))
 	g.vm.TLACode("instance", string(instanceJSON))
+	g.vm.TLACode("instances", string(instancesJSON))
 	g.vm.TLAVar("domain", g.domain)
 	in, err := g.vm.EvaluateSnippet("envoy.jsonnet", g.script)
 	if err != nil {
@@ -126,49 +133,20 @@ func (g *Compiler) Update(services []*model.Service, instance model.Instance) (b
 		g.listeners = append(g.listeners, &l)
 	}
 
+	g.endpoints = make([]cache.Resource, 0)
+	for _, endpoint := range out.Endpoints {
+		e := v2.ClusterLoadAssignment{}
+		s, _ := json.Marshal(endpoint)
+		if err := jsonpb.UnmarshalString(string(s), &e); err != nil {
+			return true, err
+		}
+		g.endpoints = append(g.endpoints, &e)
+	}
+
 	return true, nil
 }
 
-func (g *Compiler) updateEndpoints(controller model.ServiceDiscovery) bool {
-	endpoints := make([]cache.Resource, 0, len(g.clusters))
-	for _, msg := range g.clusters {
-		cluster := msg.(*v2.Cluster)
-		// note that EDS presents service name instead of cluster name here
-		if cluster.EdsClusterConfig != nil {
-			hostname, ports, labelcols := model.ParseServiceKey(cluster.EdsClusterConfig.ServiceName)
-			instances, err := controller.Instances(hostname, ports.GetNames(), labelcols)
-			if err != nil {
-				glog.Warning(err)
-			}
-			addresses := make([]endpoint.LbEndpoint, 0, len(instances))
-			for _, instance := range instances {
-				addresses = append(addresses, endpoint.LbEndpoint{
-					Endpoint: &endpoint.Endpoint{
-						Address: &core.Address{
-							Address: &core.Address_SocketAddress{
-								SocketAddress: &core.SocketAddress{
-									Address:       instance.IP,
-									PortSpecifier: &core.SocketAddress_PortValue{PortValue: uint32(instance.Port)},
-								},
-							},
-						},
-					},
-				})
-			}
-			endpoints = append(endpoints, &v2.ClusterLoadAssignment{
-				ClusterName: cluster.EdsClusterConfig.ServiceName,
-				Endpoints:   []endpoint.LocalityLbEndpoints{{LbEndpoints: addresses}}})
-		}
-	}
-
-	if reflect.DeepEqual(g.endpoints, endpoints) {
-		return false
-	}
-
-	g.endpoints = endpoints
-	return true
-}
-
+// Snapshot ...
 func (g *Compiler) Snapshot(version int) cache.Snapshot {
 	return cache.NewSnapshot(fmt.Sprintf("%d", version),
 		g.endpoints, g.clusters, g.routes, g.listeners)

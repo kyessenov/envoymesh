@@ -32,7 +32,7 @@ type Controller interface {
 	ServiceDiscovery
 
 	// RegisterServiceHandler notifies about changes to the service catalog.
-	RegisterServiceHandler(f func(*Service, Event))
+	RegisterServiceHandler(f func())
 
 	// RegisterEndpointHandler notifies about changes to the service catalog.
 	RegisterEndpointHandler(f func())

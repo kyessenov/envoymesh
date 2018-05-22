@@ -1,0 +1,8 @@
+{
+  "hello.default.svc.cluster.local:http": [
+    {
+      "ip":"10.0.0.1",
+      "port": 8080
+    }
+  ]
+}

@@ -24,9 +24,8 @@ local util = {
 };
 
 local model = {
-    key(hostname, labels, port_desc)::
-        local labels_strings = ['%s=%s' % [key, labels[key]] for key in std.objectFields(labels)];
-        '%s|%s|%s' % [hostname, port_desc.name, std.join(',', std.sort(labels_strings))],
+    key(hostname, port_desc)::
+        '%s:%s' % [hostname, port_desc.name],
 
     is_http2(protocol)::
         protocol == 'HTTP2' || protocol == 'GRPC',
@@ -57,8 +56,8 @@ local config = {
             [if model.is_http2(protocol) then 'http2_protocol_options']: {},
         },
 
-    outbound_cluster(hostname, labels, port_desc)::
-        local key = model.key(hostname, labels, port_desc);
+    outbound_cluster(hostname, port_desc)::
+        local key = model.key(hostname, port_desc);
         {
             name: key,
             connect_timeout: '5s',
@@ -141,8 +140,8 @@ local config = {
                                                 },
                                             },
                                             transport: {
-                                                check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
-                                                report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
+                                                check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                                report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
                                             },
                                         },
                                     }, {
@@ -176,7 +175,7 @@ local config = {
             name: '%d' % [port],
             virtual_hosts: [
                 {
-                    local cluster = config.outbound_cluster(service.hostname, {}, port_desc),
+                    local cluster = config.outbound_cluster(service.hostname, port_desc),
                     name: '%s:%d' % [service.hostname, port_desc.port],
                     cluster:: cluster,
                     domains: util.domains(service, port_desc.port, domain),
@@ -223,7 +222,7 @@ local config = {
         [
             {
                 local prefix = 'out_%s_%s_%d' % [port.protocol, service.hostname, port.port],
-                local cluster = config.outbound_cluster(service.hostname, {}, port),
+                local cluster = config.outbound_cluster(service.hostname, port),
                 name: prefix,
                 cluster:: cluster,
                 address: {
@@ -294,8 +293,8 @@ local config = {
                                                     },
                                                 },
                                                 transport: {
-                                                    check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
-                                                    report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', {}, { name: 'grpc-mixer' }),
+                                                    check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                                    report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
                                                 },
                                             },
                                         },
@@ -337,6 +336,7 @@ local config = {
 
 function(services=import 'testdata/services.json',
          instance=import 'testdata/instance.json',
+         instances=import 'testdata/instances.json',
          domain='default.svc.cluster.local',
          port=15001)
     {
@@ -354,5 +354,26 @@ function(services=import 'testdata/services.json',
             host.cluster
             for route in self.routes
             for host in route.virtual_hosts
+        ],
+        endpoints: [
+            {
+                local service_name = cluster.eds_cluster_config.service_name,
+                cluster_name: service_name,
+                endpoints: if service_name in instances then [{
+                    lb_endpoints: [{
+                        endpoint: {
+                            address: {
+                                socket_address: {
+                                    address: endpoint.ip,
+                                    port_value: endpoint.port,
+                                },
+                            },
+                        },
+                        metadata: {},
+                    } for endpoint in instances[service_name]],
+                }] else [],
+            }
+            for cluster in self.clusters
+            if 'eds_cluster_config' in cluster
         ],
     }
