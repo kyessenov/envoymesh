@@ -143,7 +143,7 @@ type Endpoint struct {
 	Protocol Protocol `json:"protocol"`
 
 	// Used by EDS
-	UID string
+	UID string `json:"uid"`
 }
 
 // Instance is a workload descriptor
