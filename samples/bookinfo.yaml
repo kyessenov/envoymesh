@@ -10,7 +10,7 @@ metadata:
 spec:
   ports:
   - port: 9080
-    name: http
+    name: tcp # Force to use TCP to evaluate envoy filters
   selector:
     app: details
 ---

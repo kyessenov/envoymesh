@@ -6,7 +6,7 @@ metadata:
   name: details
 spec:
   ports:
-  - name: http
+  - name: tcp
     port: 9080
   selector:
     app: details

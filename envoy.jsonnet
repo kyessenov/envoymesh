@@ -77,7 +77,7 @@ local config = {
             local port = endpoint.port,
             local cluster = config.inbound_cluster(port, protocol),
             local prefix = 'in_%s_%d' % [protocol, port],
-            name: 'in_%s_%s_%d' % [protocol, endpoint.ip, endpoint.port],
+            name: 'in_%s_%d' % [endpoint.ip, endpoint.port],
             cluster:: cluster,
             address: {
                 socket_address: {
@@ -129,9 +129,9 @@ local config = {
                                                     disable_check_calls: true,
                                                     mixer_attributes: {
                                                         attributes: {
-                                                            'destination.ip': { bytes_value: util.toBytes(endpoint.ip) },  // Set correct destination.ip for server reporting
+                                                            'destination.ip': { bytes_value: util.toBytes(endpoint.ip) },  // Set correct destination.ip for server reporting (otherwise, it is 127.0.0.1)
                                                             'destination.port': { int64_value: endpoint.port },
-                                                            'destination.service': { string_value: 'ingress' },  // Allow access from outside the mesh
+                                                            'destination.service': { string_value: 'ingress' },  // Allow access from outside the mesh (otherwise, it is not set or overridden by source)
                                                             'destination.uid': { string_value: instance.uid },
                                                             'context.reporter.proxy': { string_value: 'server' },
                                                             'context.reporter.id': { string_value: instance.uid },
@@ -221,7 +221,7 @@ local config = {
     outbound_listeners(uid, services)::
         [
             {
-                local prefix = 'out_%s_%s_%d' % [port.protocol, service.hostname, port.port],
+                local prefix = 'out_%s_%d' % [service.address, port.port],
                 local cluster = config.outbound_cluster(service.hostname, port),
                 name: prefix,
                 cluster:: cluster,
