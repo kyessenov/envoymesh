@@ -87,9 +87,9 @@ local config = {
             },
             filter_chains: [
                 {
-                    filters: [
+                    filters:
                         if model.is_http(protocol) then
-                            {
+                            [{
                                 name: 'envoy.http_connection_manager',
                                 config: {
                                     stat_prefix: prefix,
@@ -148,16 +148,34 @@ local config = {
                                         name: 'envoy.router',
                                     }],
                                 },
-                            }
+                            }]
                         else if model.is_tcp(protocol) then
-                            {
+                            [{
+                                name: 'mixer',
+                                config: {
+                                    disable_check_calls: true,
+                                    mixer_attributes: {
+                                        attributes: {
+                                            'destination.ip': { bytes_value: util.toBytes(endpoint.ip) },  // Set correct destination.ip for server reporting (otherwise, it is 127.0.0.1)
+                                            'destination.port': { int64_value: endpoint.port },
+                                            'destination.service': { string_value: 'tcp' },  // Without this, getting config resolution errors
+                                            'destination.uid': { string_value: instance.uid },
+                                            'context.reporter.proxy': { string_value: 'server' },
+                                            'context.reporter.id': { string_value: instance.uid },
+                                        },
+                                    },
+                                    transport: {
+                                        check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                        report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                    },
+                                },
+                            }, {
                                 name: 'envoy.tcp_proxy',
                                 config: {
                                     stat_prefix: prefix,
                                     cluster: cluster.name,
                                 },
-                            },
-                    ],
+                            }],
                 },
             ],
         } for endpoint in instance.endpoints],
@@ -234,6 +252,24 @@ local config = {
                 filter_chains: [
                     {
                         filters: [
+                            {
+                                name: 'mixer',
+                                config: {
+                                    disable_check_calls: true,
+                                    mixer_attributes: {
+                                        attributes: {
+                                            'destination.service': { string_value: service.hostname },
+                                            'source.uid': { string_value: uid },
+                                            'context.reporter.proxy': { string_value: 'client' },
+                                            'context.reporter.id': { string_value: uid },
+                                        },
+                                    },
+                                    transport: {
+                                        check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                        report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                    },
+                                },
+                            },
                             {
                                 name: 'envoy.tcp_proxy',
                                 config: {
@@ -369,7 +405,7 @@ function(services=import 'testdata/services.json',
                                 },
                             },
                         },
-                        [if 'uid' in endpoint then 'metadata']: { filter_metadata: { mixer: { 'destination.uid': endpoint.uid } } },
+                        [if 'uid' in endpoint then 'metadata']: { filter_metadata: { mixer: { uid: endpoint.uid } } },
                     } for endpoint in instances[service_name]],
                 }] else [],
             }
