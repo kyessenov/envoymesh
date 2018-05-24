@@ -133,8 +133,8 @@ local config = {
                                                             'destination.port': { int64_value: endpoint.port },
                                                             'destination.service': { string_value: 'ingress' },  // Allow access from outside the mesh (otherwise, it is not set or overridden by source)
                                                             'destination.uid': { string_value: instance.uid },
-                                                            'context.reporter.proxy': { string_value: 'server' },
-                                                            'context.reporter.id': { string_value: instance.uid },
+                                                            'context.reporter.local': { bool_value: true },
+                                                            'context.reporter.uid': { string_value: instance.uid },
                                                         },
                                                     },
                                                 },
@@ -161,8 +161,8 @@ local config = {
                                             'destination.port': { int64_value: endpoint.port },
                                             'destination.service': { string_value: 'unknown' },  // Without this, getting config resolution errors, should be optional in mixer
                                             'destination.uid': { string_value: instance.uid },
-                                            'context.reporter.proxy': { string_value: 'server' },
-                                            'context.reporter.id': { string_value: instance.uid },
+                                            'context.reporter.local': { bool_value: true },
+                                            'context.reporter.uid': { string_value: instance.uid },
                                         },
                                     },
                                     transport: {
@@ -262,8 +262,8 @@ local config = {
                                         attributes: {
                                             'destination.service': { string_value: service.hostname },
                                             'source.uid': { string_value: uid },
-                                            'context.reporter.proxy': { string_value: 'client' },
-                                            'context.reporter.id': { string_value: uid },
+                                            'context.reporter.local': { bool_value: false },
+                                            'context.reporter.uid': { string_value: uid },
                                         },
                                     },
                                     transport: {
@@ -322,8 +322,8 @@ local config = {
                                                 mixer_attributes: {
                                                     attributes: {
                                                         'source.uid': { string_value: uid },
-                                                        'context.reporter.proxy': { string_value: 'client' },
-                                                        'context.reporter.id': { string_value: uid },
+                                                        'context.reporter.local': { bool_value: false },
+                                                        'context.reporter.uid': { string_value: uid },
                                                     },
                                                 },
                                                 forward_attributes: {
