@@ -142,6 +142,7 @@ local config = {
                                             transport: {
                                                 check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
                                                 report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                                attributes_for_mixer_proxy: { attributes: { 'source.uid': { string_value: instance.uid } } },
                                             },
                                         },
                                     }, {
@@ -158,7 +159,7 @@ local config = {
                                         attributes: {
                                             'destination.ip': { bytes_value: util.toBytes(endpoint.ip) },  // Set correct destination.ip for server reporting (otherwise, it is 127.0.0.1)
                                             'destination.port': { int64_value: endpoint.port },
-                                            'destination.service': { string_value: 'tcp' },  // Without this, getting config resolution errors
+                                            'destination.service': { string_value: 'unknown' },  // Without this, getting config resolution errors, should be optional in mixer
                                             'destination.uid': { string_value: instance.uid },
                                             'context.reporter.proxy': { string_value: 'server' },
                                             'context.reporter.id': { string_value: instance.uid },
@@ -167,6 +168,7 @@ local config = {
                                     transport: {
                                         check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
                                         report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                        attributes_for_mixer_proxy: { attributes: { 'source.uid': { string_value: instance.uid } } },
                                     },
                                 },
                             }, {
@@ -267,6 +269,7 @@ local config = {
                                     transport: {
                                         check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
                                         report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                        attributes_for_mixer_proxy: { attributes: { 'source.uid': { string_value: uid } } },
                                     },
                                 },
                             },
@@ -331,6 +334,7 @@ local config = {
                                                 transport: {
                                                     check_cluster: model.key('istio-policy.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
                                                     report_cluster: model.key('istio-telemetry.istio-system.svc.cluster.local', { name: 'grpc-mixer' }),
+                                                    attributes_for_mixer_proxy: { attributes: { 'source.uid': { string_value: uid } } },
                                                 },
                                             },
                                         },
